@@ -2,5 +2,6 @@
 <classpath>
 	<classpathentry kind="src" path="src/java"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/opentdc 1 ~ addressbook-service (jre-1.7)"/>
 	<classpathentry kind="output" path="build/jre-1.7/eclipse"/>
 </classpath>
