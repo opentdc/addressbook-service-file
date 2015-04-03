@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<project name="opentdc-addressbook-service-file" default="build" basedir=".">
+<project name="opentdc-addressbooks-service-file" basedir=".">
 
 	<property environment="env"/>
 	<property name="java.build.platform" value="jre-1.7" />
@@ -12,7 +12,7 @@
 		<fileset dir="${cxf.lib}" includes="*.jar" />
 		<fileset dir="${build.dir}" includes="*.class" />
 		<fileset dir="../${java.build.platform}/services-generic/lib/" includes="*.jar" />
-		<fileset dir="../${java.build.platform}/addressbook-service/lib/" includes="*.jar" />
+		<fileset dir="../${java.build.platform}/addressbooks-service/lib/" includes="*.jar" />
 		<fileset dir="../opt/google/${java.build.platform}/gson/lib/" includes="*.jar" />
 	</path>
 
@@ -28,7 +28,7 @@
 	</target>
 
   <target name="deliverables" depends="javac" description="Create deliverables">
-    <jar destfile="../${java.build.platform}/addressbook-service-file/lib/opentdc-addressbook-service-file.jar">
+    <jar destfile="../${java.build.platform}/addressbooks-service-file/lib/opentdc-addressbooks-service-file.jar">
     	<zipfileset dir="${build.dir}" /> 
   	</jar>
   </target>
