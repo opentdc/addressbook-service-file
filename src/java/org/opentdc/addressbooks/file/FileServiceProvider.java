@@ -46,7 +46,6 @@ public class FileServiceProvider implements ServiceProvider {
 		ServletContext context, 
 		String prefix
 	) {
-		logger.info("> FileServiceProvider()");
 	}
 	
 	private void setNewID(AddressbookModel dataObj) {
