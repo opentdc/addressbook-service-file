@@ -79,7 +79,12 @@ public class FileServiceProvider implements ServiceProvider {
 	}
 
 	@Override
-	public List<AddressbookModel> list() {
+	public List<AddressbookModel> list(
+		String queryType,
+		String query,
+		long position,
+		long size
+	) {
 		List<AddressbookModel> _list = getData();
 		logger.info("list() -> " + getDataSize() + " values");
 		return _list;
@@ -116,13 +121,15 @@ public class FileServiceProvider implements ServiceProvider {
 
 	@Override
 	public AddressbookModel update(
+		String id,
 		AddressbookModel addressbook
 	) throws NotFoundException {
-		if (getData(addressbook.getId()) == null) {
-			setNewID(addressbook);
+		if (getData(id) == null) {
+			throw new NotFoundException();
+		} else {
+			storeData(addressbook);
+			return addressbook;
 		}
-		storeData(addressbook);
-		return addressbook;
 	}
 
 	@Override
