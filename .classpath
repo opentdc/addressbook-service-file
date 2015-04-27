@@ -9,5 +9,6 @@
 			<attribute name="org.eclipse.jst.component.dependency" value="/WEB-INF/lib"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry combineaccessrules="false" kind="src" path="/opentdc Thirdparty ~ Google GSON (jre-1.7)"/>
 	<classpathentry kind="output" path="build/jre-1.7/eclipse"/>
 </classpath>
