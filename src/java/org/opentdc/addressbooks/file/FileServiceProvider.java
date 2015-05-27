@@ -41,6 +41,7 @@ import org.opentdc.file.AbstractFileServiceProvider;
 import org.opentdc.service.exception.DuplicateException;
 import org.opentdc.service.exception.InternalServerErrorException;
 import org.opentdc.service.exception.NotFoundException;
+import org.opentdc.service.exception.ValidationException;
 import org.opentdc.util.PrettyPrinter;
 
 public class FileServiceProvider extends AbstractFileServiceProvider<ABadressbook> implements ServiceProvider {
@@ -74,20 +75,20 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABadressboo
 		long position,
 		long size
 	) {
-		logger.info("list() -> " + count() + " addressbooks.");
 		// Collections.sort(addressbooks, AddressbookModel.AdressbookComparator);
 		List<AddressbookModel> _list = new ArrayList<AddressbookModel>();
 		for (ABadressbook _adb : abookIndex.values()) {
 			logger.info(PrettyPrinter.prettyPrintAsJSON(_adb.getAddressbookModel()));
 			_list.add(_adb.getAddressbookModel());			
 		}
+		logger.info("list() -> " + _list.size() + " addressbooks.");
 		return _list;
 	}
 
 	@Override
 	public AddressbookModel create(
 		AddressbookModel addressbook
-	) throws DuplicateException {
+	) throws DuplicateException, ValidationException {
 		logger.info("create(" + PrettyPrinter.prettyPrintAsJSON(addressbook) + ")");
 		String _id = addressbook.getId();
 		if (_id == null || _id == "") {
@@ -97,16 +98,20 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABadressboo
 				// object with same ID exists already
 				throw new DuplicateException("addressbook <" + _id + "> exists already.");
 			}
+			else {  // a new ID was set on the client; we do not allow this
+				throw new ValidationException("addressbook <" + _id + 
+						"> contains an ID generated on the client. This is not allowed.");
+			}
 		}
 		addressbook.setId(_id);
 		ABadressbook _adb = new ABadressbook();
 		_adb.setAddressbookModel(addressbook);
 		abookIndex.put(_id, _adb);
-		logger.info("create() -> " + PrettyPrinter.prettyPrintAsJSON(_adb));
+		logger.info("create() -> " + PrettyPrinter.prettyPrintAsJSON(addressbook));
 		if (isPersistent) {
 			exportJson(abookIndex.values());
 		}
-		return _adb.getAddressbookModel();
+		return addressbook;
 	}
 
 	@Override
@@ -135,12 +140,8 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABadressboo
 		String id,
 		AddressbookModel addressbook
 	) throws NotFoundException {
-		ABadressbook _adb = abookIndex.get(id);
-		if (_adb == null) {
-			throw new NotFoundException("addressbook <" + id + "> was not found.");
-		} else {
-			_adb.getAddressbookModel().setName(addressbook.getName());
-		}
+		ABadressbook _adb = readAddressbook(id);
+		_adb.setName(addressbook.getName());
 		logger.info("update(" + id + ", " + PrettyPrinter.prettyPrintAsJSON(addressbook) + ") -> " +
 				PrettyPrinter.prettyPrintAsJSON(_adb.getAddressbookModel()));
 		if (isPersistent) {
@@ -153,12 +154,8 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABadressboo
 	public void delete(
 		String id
 	) throws NotFoundException {
-		ABadressbook _obj = abookIndex.get(id);
-
-		if (_obj == null) {
-			throw new NotFoundException("addressbook <" + id + "> was not found.");
-		}
-		for (ABcontact _contact : _obj.getContacts()) {
+		ABadressbook _adb = readAddressbook(id);
+		for (ABcontact _contact : _adb.getContacts()) {
 			removeContactFromIndex(_contact);
 		}
 		if (abookIndex.remove(id) == null) {
@@ -169,16 +166,6 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABadressboo
 			exportJson(abookIndex.values());
 		}
 		logger.info("delete(" + id + ")");
-	}
-
-	@Override
-	public int count() {
-		int _count = -1;
-		if (abookIndex.size() != 0) {
-			_count = abookIndex.size();
-		}
-		logger.info("count() = " + _count);
-		return _count;
 	}
 	
 	/******************************** contact *****************************************/
@@ -223,8 +210,12 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABadressboo
 		} else {
 			if (contactIndex.get(_id) != null) {
 				// project with same ID exists already
-				throw new DuplicateException("Contact <" + contact.getId() + 
+				throw new DuplicateException("contact <" + contact.getId() + 
 						"> exists already.");
+			}
+			else {  // a new ID was set on the client; we do not allow this
+				throw new ValidationException("contact <" + _id +
+						"> contains an ID generated on the client. This is not allowed.");
 			}
 		}
 		contact.setId(_id);
@@ -233,26 +224,27 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABadressboo
 		addContactToIndex(_contact);
 		return _contact;
 	}
+	
+	private ABcontact readABcontact(
+			String id)
+		throws NotFoundException {
+		ABcontact _c = contactIndex.get(id);
+		if (_c == null) {
+			throw new NotFoundException("contact <" + id + "> was not found.");			
+		}
+		return _c;
+	}
 
 	@Override
 	public ContactModel readContact(
+			String aid,
 			String cid) 
 				throws NotFoundException {
-		ContactModel _contact = readABcontact(cid).getContactModel();
-		logger.info("readContact(" + cid + ") -> "
-				+ PrettyPrinter.prettyPrintAsJSON(_contact));
-		return _contact;
-	}
-
-	private ABcontact readABcontact(
-			String cid)
-				throws NotFoundException {
-		ABcontact _c = contactIndex.get(cid);
-		if (_c == null) {
-			throw new NotFoundException("Contact <" + cid
-					+ "> was not found.");
-		}
-		return _c;
+		readAddressbook(aid);		// verify existence of addressbook
+		ABcontact _c = readABcontact(cid);
+		logger.info("readContact(" + aid + ", " + cid + ") -> "
+				+ PrettyPrinter.prettyPrintAsJSON(_c.getContactModel()));
+		return _c.getContactModel();
 	}
 	
 	@Override
@@ -261,30 +253,27 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABadressboo
 			String cid,
 			ContactModel contact) 
 				throws NotFoundException {
-		ABcontact _contact = contactIndex.get(cid);
-		if (_contact == null) {
-			throw new NotFoundException("contact <" + cid + "> not found");
-		} else {
-			_contact.getContactModel().setBirthday(contact.getBirthday());
-			_contact.getContactModel().setCompany(contact.getCompany());
-			_contact.getContactModel().setDepartment(contact.getDepartment());
-			_contact.getContactModel().setFirstName(contact.getFirstName());
-			_contact.getContactModel().setFn(contact.getFn());
-			_contact.getContactModel().setJobTitle(contact.getJobTitle());
-			_contact.getContactModel().setLastName(contact.getLastName());
-			_contact.getContactModel().setMaidenName(contact.getMaidenName());
-			_contact.getContactModel().setMiddleName(contact.getMiddleName());
-			_contact.getContactModel().setNickName(contact.getNickName());
-			_contact.getContactModel().setNote(contact.getNote());
-			_contact.getContactModel().setPhotoUrl(contact.getPhotoUrl());
-			_contact.getContactModel().setPrefix(contact.getPrefix());
-			_contact.getContactModel().setSuffix(contact.getSuffix());
-		}
-		logger.info("updateContact(" + aid + ", " + cid + ", "+ PrettyPrinter.prettyPrintAsJSON(_contact) + ") -> OK");
+		readAddressbook(aid);		// verify existence of addressbook
+		ABcontact _c = readABcontact(cid);
+		_c.getContactModel().setBirthday(contact.getBirthday());
+		_c.getContactModel().setCompany(contact.getCompany());
+		_c.getContactModel().setDepartment(contact.getDepartment());
+		_c.getContactModel().setFirstName(contact.getFirstName());
+		_c.getContactModel().setFn(contact.getFn());
+		_c.getContactModel().setJobTitle(contact.getJobTitle());
+		_c.getContactModel().setLastName(contact.getLastName());
+		_c.getContactModel().setMaidenName(contact.getMaidenName());
+		_c.getContactModel().setMiddleName(contact.getMiddleName());
+		_c.getContactModel().setNickName(contact.getNickName());
+		_c.getContactModel().setNote(contact.getNote());
+		_c.getContactModel().setPhotoUrl(contact.getPhotoUrl());
+		_c.getContactModel().setPrefix(contact.getPrefix());
+		_c.getContactModel().setSuffix(contact.getSuffix());
+		logger.info("updateContact(" + aid + ", " + cid + ", "+ PrettyPrinter.prettyPrintAsJSON(_c) + ") -> OK");
 		if (isPersistent) {
 			exportJson(abookIndex.values());
 		}
-		return _contact.getContactModel();
+		return _c.getContactModel();
 	}
 
 	@Override
@@ -293,27 +282,28 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABadressboo
 			String cid) 
 				throws NotFoundException,
 					InternalServerErrorException {
-		removeContactFromIndex(readABcontact(cid));
+		readAddressbook(aid);		// verify existence of addressbook
+		ABcontact _c = readABcontact(cid);
+		removeContactFromIndex(_c);
 					
 		logger.info("deleteContact(" + aid + ", " + cid + ") -> OK");
 		if (isPersistent) {
 			exportJson(abookIndex.values());
 		}
 	}
-
-	@Override
-	public int countContacts(
-		String aid) {
-		int _count = readAddressbook(aid).getContacts().size();
-		logger.info("countAddresses(" + aid + ") -> " + _count);
-		return _count;
-	}
 	
 	/******************************** address *****************************************/	
 	@Override
-	public List<AddressModel> listAddresses(String aid, String cid,
-			String query, String queryType, int position, int size) {
-		ArrayList<AddressModel> _addresses = readABcontact(cid).getAddresses();
+	public List<AddressModel> listAddresses(
+			String aid, 
+			String cid,
+			String query, 
+			String queryType, 
+			int position, 
+			int size) {
+		readAddressbook(aid);		// verify existence of addressbook
+		ABcontact _c = readABcontact(cid);
+		ArrayList<AddressModel> _addresses = _c.getAddresses();
 		// Collections.sort(_addresses, AddressModel.ContactComparator);
 		logger.info("listAddresses(" + aid + ", " + cid + ", " + query + ", " + 
 				queryType + ", " + position + ", " + size + ") -> " + _addresses.size()	+ " values");
@@ -321,25 +311,42 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABadressboo
 	}
 
 	@Override
-	public AddressModel createAddress(String aid, String cid,
-			AddressModel address) throws DuplicateException {
+	public AddressModel createAddress(
+			String aid, 
+			String cid,
+			AddressModel address) 
+					throws DuplicateException {
+		readAddressbook(aid);		// verify existence of addressbook
+		ABcontact _c = readABcontact(cid);
 		String _id = address.getId();
 		if (_id == null || _id == "") {
 			_id = UUID.randomUUID().toString();
 		} else {
 			if (addressIndex.get(_id) != null) {
 				// address with same ID exists already
-				throw new DuplicateException("Address <" + _id + "> exists already.");
+				throw new DuplicateException("address <" + _id + "> exists already.");
+			}
+			else {  // a new ID was set on the client; we do not allow this
+				throw new ValidationException("address <" + _id +
+						"> contains an ID generated on the client. This is not allowed.");
 			}
 		}
 		address.setId(_id);
 		addressIndex.put(_id, address);
-		readABcontact(cid).addAddress(address);
+		_c.addAddress(address);
 		logger.info("createAddress(" + aid + ", " + cid + ", "+ PrettyPrinter.prettyPrintAsJSON(address) + ")");
 		if (isPersistent) {
 			exportJson(abookIndex.values());
 		}
 		return address;
+	}
+	
+	private AddressModel getAddress(String id) {
+		AddressModel _address = addressIndex.get(id);
+		if (_address == null) {
+			throw new NotFoundException("address <" + id + "> was not found.");
+		}		
+		return _address;
 	}
 
 	@Override
@@ -348,10 +355,9 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABadressboo
 			String cid, 
 			String adrid)
 					throws NotFoundException {
-		AddressModel _address = addressIndex.get(adrid);
-		if (_address == null) {
-			throw new NotFoundException("Address <" + adrid + "> was not found.");
-		}
+		readAddressbook(aid);		// verify existence of addressbook
+		readABcontact(cid);			// verify existence of contact
+		AddressModel _address = getAddress(adrid);
 		logger.info("readAddress(" + aid + ", " + cid + ", " + adrid + ") -> " +
 				PrettyPrinter.prettyPrintAsJSON(_address));
 		return _address;
@@ -382,6 +388,14 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABadressboo
 			String cid, 
 			String adrid)
 			throws NotFoundException, InternalServerErrorException {
+		readAddressbook(aid);		// verify existence of addressbook
+		ABcontact _c = readABcontact(cid);			// verify existence of contact
+		AddressModel _adr = getAddress(adrid);
+		
+		if (_c.removeAddress(_adr) == false) {
+			throw new InternalServerErrorException("address <" + adrid + "> could not be removed from contact <" 
+					+ cid + ">, because it was not listed as a member of the contact.");
+		}
 		if (addressIndex.remove(adrid) == null) {
 			throw new InternalServerErrorException("address <" + adrid
 					+ "> can not be removed, because it does not exist in the index");	
@@ -392,13 +406,6 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABadressboo
 		}
 	}
 	
-	@Override
-	public int countAddresses(String aid, String cid) {
-		int _count = readABcontact(cid).getAddresses().size();
-		logger.info("countAddresses(" + aid + ", " + cid + ") -> " + _count);
-		return _count;
-	}
-		
 	/******************************** utility methods *****************************************/
 	private void addAbookToIndex(
 			ABadressbook abook) {
@@ -414,6 +421,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABadressboo
 			for (AddressModel _address : contact.getAddresses()) {
 				addressIndex.put(_address.getId(), _address);
 			}
+			contactIndex.put(contact.getContactModel().getId(), contact);
 		}
 	}
 

@@ -32,7 +32,7 @@ public class ABadressbook {
 	private ArrayList<ABcontact> contacts;
 	
 	public ABadressbook() {
-		
+		contacts = new ArrayList<ABcontact>();
 	}
 	
 	public AddressbookModel getAddressbookModel() {
@@ -57,5 +57,9 @@ public class ABadressbook {
 	
 	public boolean removeContact(ABcontact contact) {
 		return this.contacts.remove(contact);
+	}
+	
+	public void setName(String name) {
+		addressbookModel.setName(name);
 	}
 }

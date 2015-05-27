@@ -33,7 +33,7 @@ public class ABcontact {
 	private ArrayList<AddressModel> addresses;
 	
 	public ABcontact() {
-		
+		addresses = new ArrayList<AddressModel>();
 	}
 
 	public ContactModel getContactModel() {
