@@ -24,23 +24,29 @@
 package org.opentdc.addressbooks.file;
 
 import java.util.ArrayList;
+import java.util.Date;
 
 import org.opentdc.addressbooks.AddressbookModel;
 
-public class ABadressbook {
-	private AddressbookModel addressbookModel;
+public class ABaddressbook {
+	private AddressbookModel model;
 	private ArrayList<ABcontact> contacts;
 	
-	public ABadressbook() {
+	public ABaddressbook() {
 		contacts = new ArrayList<ABcontact>();
 	}
 	
-	public AddressbookModel getAddressbookModel() {
-		return addressbookModel;
+	public ABaddressbook(AddressbookModel addressbookModel) {
+		contacts = new ArrayList<ABcontact>();
+		this.model = addressbookModel;
 	}
 	
-	public void setAddressbookModel(AddressbookModel addressbookModel) {
-		this.addressbookModel = addressbookModel;
+	public AddressbookModel getModel() {
+		return model;
+	}
+	
+	public void setModel(AddressbookModel addressbookModel) {
+		this.model = addressbookModel;
 	}
 	
 	public ArrayList<ABcontact> getContacts() {
@@ -60,6 +66,22 @@ public class ABadressbook {
 	}
 	
 	public void setName(String name) {
-		addressbookModel.setName(name);
+		model.setName(name);
+	}
+	
+	public void setCreatedAt(Date createdAt) {
+		model.setCreatedAt(createdAt);
+	}
+	
+	public void setCreatedBy(String createdBy) {
+		model.setCreatedBy(createdBy);
+	}
+	
+	public void setModifiedAt(Date modifiedAt) {
+		model.setModifiedAt(modifiedAt);		
+	}
+	
+	public void setModifiedBy(String modifiedBy) {
+		model.setModifiedBy(modifiedBy);
 	}
 }
