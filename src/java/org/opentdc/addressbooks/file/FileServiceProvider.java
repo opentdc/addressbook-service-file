@@ -193,14 +193,26 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			int position, 
 			int size
 	) {
-		ArrayList<ContactModel> _contacts = new ArrayList<ContactModel>();
+		ArrayList<ContactModel> _contactsSelection = new ArrayList<ContactModel>(); 
+		ArrayList<ABcontact> _contacts = readAddressbook(aid).getContacts();
+		for (int i = 0; i < _contacts.size(); i++) {
+			if (i >= position && i < (position + size)) {
+				_contactsSelection.add(_contacts.get(i).getModel());
+				logger.info("accepting element " + i);
+			}
+			else {
+				logger.info("ignoring element " + i);
+			}
+		}
+		/*
 		for (ABcontact _c : readAddressbook(aid).getContacts()) {
 			_contacts.add(_c.getModel());
 		}
+		*/
 		// Collections.sort(_contacts, ContactModel.ContactComparator);
-		logger.info("listContacts(" + aid + ") -> " + _contacts.size()
+		logger.info("listContacts(<" + aid + ">, <" + query + ">, <" + queryType + ">, <" + position + ">, <" + size + ">) -> " + _contactsSelection.size()
 				+ " values");
-		return _contacts;
+		return _contactsSelection;
 	}
 	
 	@Override
