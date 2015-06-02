@@ -193,6 +193,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			int position, 
 			int size
 	) {
+		// Collections.sort(_contacts, ContactModel.ContactComparator);
 		ArrayList<ContactModel> _contactsSelection = new ArrayList<ContactModel>(); 
 		ArrayList<ABcontact> _contacts = readAddressbook(aid).getContacts();
 		for (int i = 0; i < _contacts.size(); i++) {
@@ -200,7 +201,6 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 				_contactsSelection.add(_contacts.get(i).getModel());
 			}
 		}
-		// Collections.sort(_contacts, ContactModel.ContactComparator);
 		logger.info("listContacts(<" + aid + ">, <" + query + ">, <" + queryType + 
 				">, <" + position + ">, <" + size + ">) -> " + _contactsSelection.size()
 				+ " values");
@@ -244,6 +244,11 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		return _contact.getModel();
 	}
 		
+	/**
+	 * @param id
+	 * @return
+	 * @throws NotFoundException
+	 */
 	private ABcontact readABcontact(
 			String id)
 		throws NotFoundException {
@@ -254,6 +259,9 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		return _c;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.opentdc.addressbooks.ServiceProvider#readContact(java.lang.String, java.lang.String)
+	 */
 	@Override
 	public ContactModel readContact(
 			String aid,
