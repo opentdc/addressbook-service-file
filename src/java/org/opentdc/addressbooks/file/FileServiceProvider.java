@@ -25,11 +25,12 @@ package org.opentdc.addressbooks.file;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 import javax.servlet.ServletContext;
@@ -59,32 +60,42 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		) throws IOException {
 		super(context, prefix);
 		if (abookIndex == null) {
-			abookIndex = new HashMap<String, ABaddressbook>();
-			contactIndex = new HashMap<String, ABcontact>();
-			addressIndex = new HashMap<String, AddressModel>();
-				
+			abookIndex = new ConcurrentHashMap<String, ABaddressbook>();
+			contactIndex = new ConcurrentHashMap<String, ABcontact>();
+			addressIndex = new ConcurrentHashMap<String, AddressModel>();
+			
 			List<ABaddressbook> _addressbooks = importJson();
 			for (ABaddressbook _addressbook : _addressbooks) {
 				addAbookToIndex(_addressbook);
 			}
 		}
+		logger.info("indexed " 
+			+ abookIndex.size() + " AddressBooks, "
+			+ contactIndex.size() + " Contacts, "
+			+ addressIndex.size() + " Addresses.");
 	}
 	
 	@Override
 	public List<AddressbookModel> list(
-		String queryType,
 		String query,
+		String queryType,
 		long position,
 		long size
 	) {
-		// Collections.sort(addressbooks, AddressbookModel.AdressbookComparator);
-		List<AddressbookModel> _list = new ArrayList<AddressbookModel>();
-		for (ABaddressbook _adb : abookIndex.values()) {
-			logger.info(PrettyPrinter.prettyPrintAsJSON(_adb.getModel()));
-			_list.add(_adb.getModel());			
+		ArrayList<AddressbookModel> _addressbooks = new ArrayList<AddressbookModel>();
+		for (ABaddressbook _ab : abookIndex.values()) {
+			_addressbooks.add(_ab.getModel());
 		}
-		logger.info("list() -> " + _list.size() + " addressbooks.");
-		return _list;
+		Collections.sort(_addressbooks, AddressbookModel.AddressbookComparator);
+		ArrayList<AddressbookModel> _selection = new ArrayList<AddressbookModel>();
+		for (int i = 0; i < _addressbooks.size(); i++) {
+			if (i >= position && i < (position + size)) {
+				_selection.add(_addressbooks.get(i));
+			}			
+		}
+		logger.info("list(<" + query + ">, <" + queryType + 
+			">, <" + position + ">, <" + size + ">) -> " + _selection.size() + " addressbooks.");
+		return _selection;
 	}
 
 	@Override
@@ -113,9 +124,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		addressbook.setCreatedBy("DUMMY_USER");
 		abookIndex.put(_id, new ABaddressbook(addressbook));
 		logger.info("create() -> " + PrettyPrinter.prettyPrintAsJSON(addressbook));
-		if (isPersistent) {
-			exportJson(abookIndex.values());
-		}
+		exportJson(abookIndex.values());
 		return addressbook;
 	}
 
@@ -136,7 +145,8 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			throw new NotFoundException("addressbook <" + id
 					+ "> was not found.");
 		}
-		logger.info("readAddressbook(" + id + ") -> " + PrettyPrinter.prettyPrintAsJSON(_adb));
+		// beware: this log entry is bad for performance as it is called many times
+		// logger.info("readAddressbook(" + id + ") -> " + PrettyPrinter.prettyPrintAsJSON(_adb));
 		return _adb;
 	}
 	
@@ -160,9 +170,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 
 		logger.info("update(" + aid + ", " + PrettyPrinter.prettyPrintAsJSON(addressbook) + ") -> " +
 				PrettyPrinter.prettyPrintAsJSON(_adb.getModel()));
-		if (isPersistent) {
-			exportJson(abookIndex.values());
-		}
+		exportJson(abookIndex.values());
 		return _adb.getModel();
 	}
 
@@ -178,9 +186,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			throw new InternalServerErrorException("addressbook <" + id
 					+ "> can not be removed, because it does not exist in the index");
 		}
-		if (isPersistent) {
-			exportJson(abookIndex.values());
-		}
+		exportJson(abookIndex.values());
 		logger.info("delete(" + id + ")");
 	}
 	
@@ -193,18 +199,21 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			int position, 
 			int size
 	) {
-		// Collections.sort(_contacts, ContactModel.ContactComparator);
-		ArrayList<ContactModel> _contactsSelection = new ArrayList<ContactModel>(); 
-		ArrayList<ABcontact> _contacts = readAddressbook(aid).getContacts();
+		ArrayList<ContactModel> _contacts = new ArrayList<ContactModel>(); 
+		for (ABcontact _c : readAddressbook(aid).getContacts()) {
+			_contacts.add(_c.getModel());
+		}
+		Collections.sort(_contacts, ContactModel.ContactComparator);
+		ArrayList<ContactModel> _selection = new ArrayList<ContactModel>(); 
 		for (int i = 0; i < _contacts.size(); i++) {
 			if (i >= position && i < (position + size)) {
-				_contactsSelection.add(_contacts.get(i).getModel());
+				_selection.add(_contacts.get(i));
 			}
 		}
 		logger.info("listContacts(<" + aid + ">, <" + query + ">, <" + queryType + 
-				">, <" + position + ">, <" + size + ">) -> " + _contactsSelection.size()
+				">, <" + position + ">, <" + size + ">) -> " + _selection.size()
 				+ " values");
-		return _contactsSelection;
+		return _selection;
 	}
 	
 	@Override
@@ -238,9 +247,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		addContactToIndex(_contact);		
 		readAddressbook(aid).addContact(_contact);
 		logger.info("createContact(" + aid + ", " + PrettyPrinter.prettyPrintAsJSON(_contact.getModel()) + ")");
-		if (isPersistent) {
-			exportJson(abookIndex.values());
-		}
+		exportJson(abookIndex.values());
 		return _contact.getModel();
 	}
 		
@@ -309,9 +316,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		_cm.setModifiedBy("DUMMY_USER");
 		_c.setModel(_cm);
 		logger.info("updateContact(" + aid + ", " + cid + ", "+ PrettyPrinter.prettyPrintAsJSON(_cm) + ") -> OK");
-		if (isPersistent) {
-			exportJson(abookIndex.values());
-		}
+		exportJson(abookIndex.values());
 		return _cm;
 	}
 
@@ -322,14 +327,16 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 				throws NotFoundException,
 					InternalServerErrorException 
 	{
-		readAddressbook(aid);		// verify existence of addressbook
+		ABaddressbook _abab = readAddressbook(aid);		// verify existence of addressbook
 		ABcontact _c = readABcontact(cid);
+		if (_abab.removeContact(_c) == false) {
+			throw new InternalServerErrorException("contact <" + cid + "> could not be removed from addressbook <"
+				+ aid + ">, because it was not listed as a member of the addressbook.");
+		}
 		removeContactFromIndex(_c);
 					
 		logger.info("deleteContact(" + aid + ", " + cid + ") -> OK");
-		if (isPersistent) {
-			exportJson(abookIndex.values());
-		}
+		exportJson(abookIndex.values());
 	}
 	
 	/******************************** address *****************************************/	
@@ -343,11 +350,17 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			int size) {
 		readAddressbook(aid);		// verify existence of addressbook
 		ABcontact _c = readABcontact(cid);
-		ArrayList<AddressModel> _addresses = _c.getAddresses();
-		// Collections.sort(_addresses, AddressModel.ContactComparator);
+		List<AddressModel> _addresses = _c.getAddresses();
+		Collections.sort(_addresses, AddressModel.AddressComparator);
+		ArrayList<AddressModel> _selection = new ArrayList<AddressModel>();
+		for (int i = 0; i < _addresses.size(); i++) {
+			if (i >= position && i < (position + size)) {
+				_selection.add(_addresses.get(i));
+			}
+		}		
 		logger.info("listAddresses(" + aid + ", " + cid + ", " + query + ", " + 
-				queryType + ", " + position + ", " + size + ") -> " + _addresses.size()	+ " values");
-		return _addresses;
+				queryType + ", " + position + ", " + size + ") -> " + _selection.size()	+ " values");
+		return _selection;
 	}
 
 	@Override
@@ -380,9 +393,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		addressIndex.put(_id, address);
 		_c.addAddress(address);
 		logger.info("createAddress(" + aid + ", " + cid + ", "+ PrettyPrinter.prettyPrintAsJSON(address) + ")");
-		if (isPersistent) {
-			exportJson(abookIndex.values());
-		}
+		exportJson(abookIndex.values());
 		return address;
 	}
 	
@@ -438,9 +449,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		_c.addAddress(_am);
 		logger.info("updateAddress(" + aid + ", " + cid + ", " + adrid + ") -> " +
 				PrettyPrinter.prettyPrintAsJSON(_am));
-		if (isPersistent) {
-			exportJson(abookIndex.values());
-		}
+		exportJson(abookIndex.values());
 		return _am;
 	}
 
@@ -463,9 +472,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 					+ "> can not be removed, because it does not exist in the index");	
 		}
 		logger.info("deleteAddress(" + aid + ", " + cid + ", " + adrid + ") -> OK");
-		if (isPersistent) {
-			exportJson(abookIndex.values());
-		}
+		exportJson(abookIndex.values());
 	}
 	
 	/******************************** utility methods *****************************************/
