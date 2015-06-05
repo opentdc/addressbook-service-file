@@ -24,7 +24,7 @@
 package org.opentdc.addressbooks.file;
 
 import java.util.ArrayList;
-import java.util.Date;
+import java.util.List;
 
 import org.opentdc.addressbooks.AddressbookModel;
 
@@ -49,7 +49,7 @@ public class ABaddressbook {
 		this.model = addressbookModel;
 	}
 	
-	public ArrayList<ABcontact> getContacts() {
+	public List<ABcontact> getContacts() {
 		return contacts;
 	}
 	
@@ -63,25 +63,5 @@ public class ABaddressbook {
 	
 	public boolean removeContact(ABcontact contact) {
 		return this.contacts.remove(contact);
-	}
-	
-	public void setName(String name) {
-		model.setName(name);
-	}
-	
-	public void setCreatedAt(Date createdAt) {
-		model.setCreatedAt(createdAt);
-	}
-	
-	public void setCreatedBy(String createdBy) {
-		model.setCreatedBy(createdBy);
-	}
-	
-	public void setModifiedAt(Date modifiedAt) {
-		model.setModifiedAt(modifiedAt);		
-	}
-	
-	public void setModifiedBy(String modifiedBy) {
-		model.setModifiedBy(modifiedBy);
 	}
 }
