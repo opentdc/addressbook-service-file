@@ -42,7 +42,6 @@ import org.opentdc.addressbooks.ServiceProvider;
 import org.opentdc.file.AbstractFileServiceProvider;
 import org.opentdc.service.exception.DuplicateException;
 import org.opentdc.service.exception.InternalServerErrorException;
-import org.opentdc.service.exception.NotAllowedException;
 import org.opentdc.service.exception.NotFoundException;
 import org.opentdc.service.exception.ValidationException;
 import org.opentdc.util.PrettyPrinter;
@@ -121,7 +120,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		addressbook.setCreatedAt(_date);
 		addressbook.setCreatedBy("DUMMY_USER");
 		addressbook.setModifiedAt(_date);
-		addressbook.setCreatedBy("DUMMY_USER");
+		addressbook.setModifiedBy("DUMMY_USER");
 		abookIndex.put(_id, new ABaddressbook(addressbook));
 		logger.info("create() -> " + PrettyPrinter.prettyPrintAsJSON(addressbook));
 		exportJson(abookIndex.values());
@@ -154,14 +153,14 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 	public AddressbookModel update(
 		String aid,
 		AddressbookModel addressbook
-	) throws NotFoundException, NotAllowedException {
+	) throws NotFoundException, ValidationException {
 		ABaddressbook _adb = readAddressbook(aid);
 		AddressbookModel _am = _adb.getModel();
 		if (! _am.getCreatedAt().equals(addressbook.getCreatedAt())) {
-			throw new NotAllowedException("addressbook<" + aid + ">: it is not allowed to change createdAt on the client.");
+			throw new ValidationException("addressbook<" + aid + ">: it is not allowed to change createdAt on the client.");
 		}
 		if (! _am.getCreatedBy().equalsIgnoreCase(addressbook.getCreatedBy())) {
-			throw new NotAllowedException("addressbook<" + aid + ">: it is not allowed to change createdBy on the client.");
+			throw new ValidationException("addressbook<" + aid + ">: it is not allowed to change createdBy on the client.");
 		}
 		_am.setName(addressbook.getName());
 		_am.setModifiedAt(new Date());
@@ -240,7 +239,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		contact.setCreatedAt(_date);
 		contact.setCreatedBy("DUMMY_USER");
 		contact.setModifiedAt(_date);
-		contact.setCreatedBy("DUMMY_USER");
+		contact.setModifiedBy("DUMMY_USER");
 		
 		ABcontact _contact = new ABcontact();
 		_contact.setModel(contact);
@@ -286,17 +285,17 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			String aid, 
 			String cid,
 			ContactModel contact) 
-				throws NotFoundException, NotAllowedException 
+				throws NotFoundException, ValidationException 
 	{
 		readAddressbook(aid);		// verify existence of addressbook
 		ABcontact _c = readABcontact(cid);
 		ContactModel _cm = _c.getModel();
 		
 		if (! _cm.getCreatedAt().equals(contact.getCreatedAt())) {
-			throw new NotAllowedException("contact<" + cid + ">: it is not allowed to change createdAt on the client.");
+			throw new ValidationException("contact<" + cid + ">: it is not allowed to change createdAt on the client.");
 		}
 		if (! _cm.getCreatedBy().equalsIgnoreCase(contact.getCreatedBy())) {
-			throw new NotAllowedException("contact<" + cid + ">: it is not allowed to change createdBy on the client.");
+			throw new ValidationException("contact<" + cid + ">: it is not allowed to change createdBy on the client.");
 		}
 		_cm.setPhotoUrl(contact.getPhotoUrl());
 		_cm.setFn(contact.getFn());
@@ -425,15 +424,15 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			String cid, 
 			String adrid,
 			AddressModel address) 
-				throws NotFoundException {
+				throws NotFoundException, ValidationException {
 		readAddressbook(aid);		// verify existence of addressbook
 		ABcontact _c = readABcontact(cid);			// verify existence of contact
 		AddressModel _am = getAddress(adrid);
 		if (! _am.getCreatedAt().equals(address.getCreatedAt())) {
-			throw new NotAllowedException("contact<" + cid + ">: it is not allowed to change createdAt on the client.");
+			throw new ValidationException("contact<" + cid + ">: it is not allowed to change createdAt on the client.");
 		}
 		if (! _am.getCreatedBy().equalsIgnoreCase(address.getCreatedBy())) {
-			throw new NotAllowedException("contact<" + cid + ">: it is not allowed to change createdBy on the client.");
+			throw new ValidationException("contact<" + cid + ">: it is not allowed to change createdBy on the client.");
 		}
 
 		_am.setAttributeType(address.getAttributeType());
