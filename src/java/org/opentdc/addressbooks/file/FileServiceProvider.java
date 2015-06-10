@@ -115,6 +115,10 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 						"> contains an ID generated on the client. This is not allowed.");
 			}
 		}
+		if (addressbook.getName() == null || addressbook.getName().length() == 0) {
+			throw new ValidationException("addressbook <" + _id + 
+					"> must contain a valid name.");
+		}
 		addressbook.setId(_id);
 		Date _date = new Date();
 		addressbook.setCreatedAt(_date);
