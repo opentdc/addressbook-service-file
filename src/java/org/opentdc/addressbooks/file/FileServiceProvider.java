@@ -238,6 +238,24 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 						"> contains an ID generated on the client. This is not allowed.");
 			}
 		}
+		if (contact.getFn() == null || contact.getFn().length() == 0) {
+			String _fn = contact.getFirstName();
+			if (_fn == null || _fn.length() == 0) {
+				_fn = contact.getLastName();
+			}
+			else {
+				if (contact.getLastName() != null && contact.getLastName().length() > 0) {
+					_fn = _fn + " " + contact.getLastName();
+				}
+			}
+			if (_fn == null || _fn.length() == 0) {
+				throw new ValidationException("contact <" + _id + 
+						"> must contain a fn name.");
+			}
+			else {
+				contact.setFn(_fn);
+			}
+		}
 		contact.setId(_id);
 		Date _date = new Date();
 		contact.setCreatedAt(_date);
@@ -386,6 +404,18 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 				throw new ValidationException("address <" + _id +
 						"> contains an ID generated on the client. This is not allowed.");
 			}
+		}
+		if (address.getAttributeType() == null || address.getAttributeType().length() == 0) {
+			throw new ValidationException("address <" + _id + 
+					"> must contain an attributeType.");
+		}
+		if (address.getType() == null || address.getType().length() == 0) {
+			throw new ValidationException("address <" + _id + 
+					"> must contain a type.");
+		}
+		if (address.getValue() == null || address.getValue().length() == 0) {
+			throw new ValidationException("address <" + _id + 
+					"> must contain a value.");
 		}
 		address.setId(_id);
 		Date _date = new Date();
