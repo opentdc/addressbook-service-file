@@ -38,6 +38,8 @@ import javax.servlet.ServletContext;
 import org.opentdc.addressbooks.AddressModel;
 import org.opentdc.addressbooks.AddressbookModel;
 import org.opentdc.addressbooks.ContactModel;
+import org.opentdc.addressbooks.OrgModel;
+import org.opentdc.addressbooks.OrgType;
 import org.opentdc.addressbooks.ServiceProvider;
 import org.opentdc.file.AbstractFileServiceProvider;
 import org.opentdc.service.exception.DuplicateException;
@@ -50,6 +52,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 
 	private static Map<String, ABaddressbook> abookIndex = null;
 	private static Map<String, ABcontact> contactIndex = null;
+	private static Map<String, ABorg> orgIndex = null;
 	private static Map<String, AddressModel> addressIndex = null;
 	private static final Logger logger = Logger.getLogger(ServiceProvider.class.getName());
 	
@@ -61,6 +64,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		if (abookIndex == null) {
 			abookIndex = new ConcurrentHashMap<String, ABaddressbook>();
 			contactIndex = new ConcurrentHashMap<String, ABcontact>();
+			orgIndex = new ConcurrentHashMap<String, ABorg>();
 			addressIndex = new ConcurrentHashMap<String, AddressModel>();
 			
 			List<ABaddressbook> _addressbooks = importJson();
@@ -71,6 +75,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		logger.info("indexed " 
 			+ abookIndex.size() + " AddressBooks, "
 			+ contactIndex.size() + " Contacts, "
+			+ orgIndex.size() + " Organizations, "
 			+ addressIndex.size() + " Addresses.");
 	}
 	
@@ -229,7 +234,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			_id = UUID.randomUUID().toString();
 		} else {
 			if (contactIndex.get(_id) != null) {
-				// project with same ID exists already
+				// contact with same ID exists already
 				throw new DuplicateException("contact <" + contact.getId() + 
 						"> exists already.");
 			}
@@ -296,10 +301,10 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			String cid) 
 				throws NotFoundException {
 		readAddressbook(aid);		// verify existence of addressbook
-		ABcontact _c = readABcontact(cid);
+		ABcontact _abContact = readABcontact(cid);
 		logger.info("readContact(" + aid + ", " + cid + ") -> "
-				+ PrettyPrinter.prettyPrintAsJSON(_c.getModel()));
-		return _c.getModel();
+				+ PrettyPrinter.prettyPrintAsJSON(_abContact.getModel()));
+		return _abContact.getModel();
 	}
 	
 	@Override
@@ -357,6 +362,139 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		removeContactFromIndex(_c);
 					
 		logger.info("deleteContact(" + aid + ", " + cid + ") -> OK");
+		exportJson(abookIndex.values());
+	}
+
+	/******************************** org *****************************************/
+	@Override
+	public List<OrgModel> listOrgs(String aid, String query, String queryType,
+			int position, int size) {
+		ArrayList<OrgModel> _orgs = new ArrayList<OrgModel>(); 
+		for (ABorg _o : readAddressbook(aid).getOrgs()) {
+			_orgs.add(_o.getModel());
+		}
+		Collections.sort(_orgs, OrgModel.OrgComparator);
+		ArrayList<OrgModel> _selection = new ArrayList<OrgModel>(); 
+		for (int i = 0; i < _orgs.size(); i++) {
+			if (i >= position && i < (position + size)) {
+				_selection.add(_orgs.get(i));
+			}
+		}
+		logger.info("listOrgs(<" + aid + ">, <" + query + ">, <" + queryType + 
+				">, <" + position + ">, <" + size + ">) -> " + _selection.size()
+				+ " values");
+		return _selection;
+	}
+
+	@Override
+	public OrgModel createOrg(String aid, OrgModel org)
+			throws DuplicateException, ValidationException {
+		String _id = org.getId();
+		if (_id == null || _id == "") {
+			_id = UUID.randomUUID().toString();
+		} else {
+			if (orgIndex.get(_id) != null) {
+				// org with same ID exists already
+				throw new DuplicateException("org <" + org.getId() + 
+						"> exists already.");
+			}
+			else {  // a new ID was set on the client; we do not allow this
+				throw new ValidationException("org <" + _id +
+						"> contains an ID generated on the client. This is not allowed.");
+			}
+		}
+		if (org.getName() == null || org.getName().length() == 0) {
+			throw new ValidationException("org <" + _id + 
+						"> must contain a name.");
+		}
+		if (org.getOrgType() == null) {
+			org.setOrgType(OrgType.getDefaultOrgType());
+		}
+		org.setId(_id);
+		Date _date = new Date();
+		org.setCreatedAt(_date);
+		org.setCreatedBy("DUMMY_USER");
+		org.setModifiedAt(_date);
+		org.setModifiedBy("DUMMY_USER");
+		
+		ABorg _aborg = new ABorg();
+		_aborg.setModel(org);
+		orgIndex.put(_id, _aborg);
+
+		readAddressbook(aid).addOrg(_aborg);
+		logger.info("createOrg(" + aid + ", " + PrettyPrinter.prettyPrintAsJSON(_aborg.getModel()) + ")");
+		exportJson(abookIndex.values());
+		return _aborg.getModel();
+	}
+
+	private ABorg readABorg(
+			String oid)
+		throws NotFoundException {
+		ABorg _aborg = orgIndex.get(oid);
+		if (_aborg == null) {
+			throw new NotFoundException("org <" + oid + "> was not found.");			
+		}
+		return _aborg;
+	}
+	
+	@Override
+	public OrgModel readOrg(
+			String aid, 
+			String oid) 
+					throws NotFoundException {
+		readAddressbook(aid);		// verify existence of addressbook
+		ABorg _abOrg = readABorg(oid);
+		logger.info("readOrg(" + aid + ", " + oid + ") -> "
+				+ PrettyPrinter.prettyPrintAsJSON(_abOrg.getModel()));
+		return _abOrg.getModel();
+	}
+
+	@Override
+	public OrgModel updateOrg(
+			String aid, 
+			String oid, 
+			OrgModel org)
+			throws NotFoundException, ValidationException {
+		readAddressbook(aid);		// verify existence of addressbook
+		ABorg _abOrg = readABorg(oid);
+		OrgModel _om = _abOrg.getModel();
+		
+		if (! _om.getCreatedAt().equals(org.getCreatedAt())) {
+			throw new ValidationException("contact<" + oid + ">: it is not allowed to change createdAt on the client.");
+		}
+		if (! _om.getCreatedBy().equalsIgnoreCase(org.getCreatedBy())) {
+			throw new ValidationException("contact<" + oid + ">: it is not allowed to change createdBy on the client.");
+		}
+		_om.setName(org.getName());
+		_om.setDescription(org.getDescription());
+		_om.setCostCenter(org.getCostCenter());
+		_om.setStockExchange(org.getStockExchange());
+		_om.setTickerSymbol(org.getTickerSymbol());
+		_om.setOrgType(org.getOrgType());
+		_om.setLogoUrl(org.getLogoUrl());
+		_om.setModifiedAt(new Date());
+		_om.setModifiedBy("DUMMY_USER");
+		_abOrg.setModel(_om);
+		logger.info("updateOrg(" + aid + ", " + oid + ", "+ PrettyPrinter.prettyPrintAsJSON(_om) + ") -> OK");
+		exportJson(abookIndex.values());
+		return _om;
+	}
+
+	@Override
+	public void deleteOrg(
+			String aid, 
+			String oid) 
+					throws NotFoundException,
+			InternalServerErrorException {
+		ABaddressbook _abab = readAddressbook(aid);		// verify existence of addressbook
+		ABorg _abOrg = readABorg(oid);
+		if (_abab.removeOrg(_abOrg) == false) {
+			throw new InternalServerErrorException("org <" + oid + "> could not be removed from addressbook <"
+				+ aid + ">, because it was not listed as a member of the addressbook.");
+		}
+		removeOrgFromIndex(_abOrg);
+					
+		logger.info("deleteContact(" + aid + ", " + oid + ") -> OK");
 		exportJson(abookIndex.values());
 	}
 	
@@ -539,6 +677,21 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			if ((contactIndex.remove(contact.getModel().getId())) == null) {
 			throw new InternalServerErrorException("contact <" + contact.getModel().getId()
 				+ "> can not be removed, because it does not exist in the index");
+			}
+		}
+	}
+	
+	private void removeOrgFromIndex(ABorg org) {
+		if (org != null) {
+			for (AddressModel _address : org.getAddresses()) {
+				if (addressIndex.remove(_address.getId()) == null) {
+					throw new InternalServerErrorException("address <" + _address.getId()
+							+ "> can not be removed, because it does not exist in the index");
+				}
+			}
+			if ((orgIndex.remove(org.getModel().getId())) == null) {
+				throw new InternalServerErrorException("org <" + org.getModel().getId()
+						+ "> can not be removed, because it does not exist in the index");
 			}
 		}
 	}

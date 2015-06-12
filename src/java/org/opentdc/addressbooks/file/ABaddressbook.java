@@ -31,13 +31,16 @@ import org.opentdc.addressbooks.AddressbookModel;
 public class ABaddressbook {
 	private AddressbookModel model;
 	private ArrayList<ABcontact> contacts;
+	private ArrayList<ABorg> orgs;
 	
 	public ABaddressbook() {
 		contacts = new ArrayList<ABcontact>();
+		setOrgs(new ArrayList<ABorg>());
 	}
 	
 	public ABaddressbook(AddressbookModel addressbookModel) {
 		contacts = new ArrayList<ABcontact>();
+		setOrgs(new ArrayList<ABorg>());
 		this.model = addressbookModel;
 	}
 	
@@ -63,5 +66,27 @@ public class ABaddressbook {
 	
 	public boolean removeContact(ABcontact contact) {
 		return this.contacts.remove(contact);
+	}
+
+	/**
+	 * @return the orgs
+	 */
+	public ArrayList<ABorg> getOrgs() {
+		return orgs;
+	}
+
+	/**
+	 * @param orgs the orgs to set
+	 */
+	public void setOrgs(ArrayList<ABorg> orgs) {
+		this.orgs = orgs;
+	}
+	
+	public void addOrg(ABorg org) {
+		this.orgs.add(org);
+	}
+	
+	public boolean removeOrg(ABorg org) {
+		return this.orgs.remove(org);
 	}
 }
