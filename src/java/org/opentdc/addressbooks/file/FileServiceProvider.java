@@ -197,7 +197,34 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		exportJson(abookIndex.values());
 		logger.info("delete(" + id + ")");
 	}
-	
+
+	@Override
+	public ArrayList<ContactModel> listAllContacts(
+			String query, 
+			String queryType, 
+			int position, 
+			int size
+	) {
+		ArrayList<ContactModel> _contacts = new ArrayList<ContactModel>(); 
+		for (ABaddressbook _ab : abookIndex.values()) {
+			for (ABcontact _c : _ab.getContacts()) {
+				_contacts.add(_c.getModel());
+			}
+		}
+
+		Collections.sort(_contacts, ContactModel.ContactComparator);
+		ArrayList<ContactModel> _selection = new ArrayList<ContactModel>(); 
+		for (int i = 0; i < _contacts.size(); i++) {
+			if (i >= position && i < (position + size)) {
+				_selection.add(_contacts.get(i));
+			}
+		}
+		logger.info("listAllContacts(<" + query + ">, <" + queryType + 
+				">, <" + position + ">, <" + size + ">) -> " + _selection.size()
+				+ " values");
+		return _selection;
+	}
+
 	/******************************** contact *****************************************/
 	@Override
 	public ArrayList<ContactModel> listContacts(
