@@ -30,17 +30,17 @@ import org.opentdc.addressbooks.AddressbookModel;
 
 public class ABaddressbook {
 	private AddressbookModel model;
-	private ArrayList<ABcontact> contacts;
-	private ArrayList<ABorg> orgs;
+	private ArrayList<String> contactIds;
+	private ArrayList<String> orgIds;
 	
 	public ABaddressbook() {
-		contacts = new ArrayList<ABcontact>();
-		setOrgs(new ArrayList<ABorg>());
+		contactIds = new ArrayList<String>();
+		orgIds = new ArrayList<String>();
 	}
 	
 	public ABaddressbook(AddressbookModel addressbookModel) {
-		contacts = new ArrayList<ABcontact>();
-		setOrgs(new ArrayList<ABorg>());
+		contactIds = new ArrayList<String>();
+		orgIds = new ArrayList<String>();
 		this.model = addressbookModel;
 	}
 	
@@ -52,41 +52,37 @@ public class ABaddressbook {
 		this.model = addressbookModel;
 	}
 	
-	public List<ABcontact> getContacts() {
-		return contacts;
+	public List<String> getContacts() {
+		return contactIds;
+	}
+		
+	public void addContact(String cid) {
+		this.contactIds.add(cid);
 	}
 	
-	public void setContacts(ArrayList<ABcontact> contacts) {
-		this.contacts = contacts;
-	}
-	
-	public void addContact(ABcontact contact) {
-		this.contacts.add(contact);
-	}
-	
-	public boolean removeContact(ABcontact contact) {
-		return this.contacts.remove(contact);
+	public boolean removeContact(String cid) {
+		return this.contactIds.remove(cid);
 	}
 
 	/**
 	 * @return the orgs
 	 */
-	public ArrayList<ABorg> getOrgs() {
-		return orgs;
+	public ArrayList<String> getOrgs() {
+		return orgIds;
 	}
 
 	/**
 	 * @param orgs the orgs to set
 	 */
-	public void setOrgs(ArrayList<ABorg> orgs) {
-		this.orgs = orgs;
+	public void setOrgs(ArrayList<String> orgs) {
+		this.orgIds = orgs;
 	}
 	
-	public void addOrg(ABorg org) {
-		this.orgs.add(org);
+	public void addOrg(String oid) {
+		this.orgIds.add(oid);
 	}
 	
-	public boolean removeOrg(ABorg org) {
-		return this.orgs.remove(org);
+	public boolean removeOrg(String oid) {
+		return this.orgIds.remove(oid);
 	}
 }

@@ -31,6 +31,7 @@ import org.opentdc.addressbooks.OrgModel;
 public class ABorg {
 	private OrgModel model;
 	private ArrayList<AddressModel> addresses;
+	private int refCounter = 0;
 	
 	public ABorg() {
 		addresses = new ArrayList<AddressModel>();
@@ -58,5 +59,21 @@ public class ABorg {
 	
 	public boolean removeAddress(AddressModel address) {
 		return this.addresses.remove(address);
+	}
+	
+	public int getRefCounter() {
+		return refCounter;
+	}
+	
+	public void setRefCounter(int refCounter) {
+		this.refCounter = refCounter;
+	}
+	
+	public void incrementRefCounter() {
+		refCounter++;
+	}
+	
+	public void decrementRefCounter() {
+		refCounter--;
 	}
 }

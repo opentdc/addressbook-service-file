@@ -32,9 +32,11 @@ import org.opentdc.addressbooks.ContactModel;
 public class ABcontact {
 	private ContactModel model;
 	private ArrayList<AddressModel> addresses;
+	private int refCounter = 0;
 	
 	public ABcontact() {
 		addresses = new ArrayList<AddressModel>();
+		refCounter = 0;
 	}
 
 	public ContactModel getModel() {
@@ -44,17 +46,42 @@ public class ABcontact {
 	public void setModel(ContactModel contactModel) {
 		this.model = contactModel;
 	}
-
+	
+	public int getRefCounter() {
+		return refCounter;
+	}
+	
+	public void setRefCounter(int refCounter) {
+		this.refCounter = refCounter;
+	}
+	
+	public void incrementRefCounter() {
+		refCounter++;
+	}
+	
+	public void decrementRefCounter() {
+		refCounter--;
+	}
+	
 	public ArrayList<AddressModel> getAddresses() {
 		return addresses;
 	}
-	
 	public void setAddresses(ArrayList<AddressModel> addresses) {
 		this.addresses = addresses;
 	}
 	
 	public void addAddress(AddressModel address) {
 		this.addresses.add(address);
+	}
+	
+	public void replaceAddress(AddressModel address) {
+		int _index = 0;
+		for (_index = 0; _index < this.addresses.size(); _index++) {
+			if (this.addresses.get(_index).getId().equalsIgnoreCase(address.getId())) {
+				break;
+			}
+		}
+		this.addresses.set(_index, address);
 	}
 	
 	public boolean removeAddress(AddressModel address) {
