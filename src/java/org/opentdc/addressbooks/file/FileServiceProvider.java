@@ -157,9 +157,9 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		addressbook.setId(_id);
 		Date _date = new Date();
 		addressbook.setCreatedAt(_date);
-		addressbook.setCreatedBy("DUMMY_USER");
+		addressbook.setCreatedBy(getPrincipal());
 		addressbook.setModifiedAt(_date);
-		addressbook.setModifiedBy("DUMMY_USER");
+		addressbook.setModifiedBy(getPrincipal());
 		abookIndex.put(_id, new ABaddressbook(addressbook));
 		logger.info("create() -> " + PrettyPrinter.prettyPrintAsJSON(addressbook));
 		exportJson(abookIndex.values());
@@ -212,7 +212,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		}
 		_am.setName(addressbook.getName());
 		_am.setModifiedAt(new Date());
-		_am.setModifiedBy("DUMMY_USER");
+		_am.setModifiedBy(getPrincipal());
 		_adb.setModel(_am);
 
 		logger.info("update(" + aid + ", " + PrettyPrinter.prettyPrintAsJSON(addressbook) + ") -> " +
@@ -316,25 +316,13 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 						"> contains an ID generated on the client. This is not allowed.");
 			}
 		}
-		if (contact.getFirstName() == null || contact.getFirstName().length() == 0) {
-			throw new ValidationException("contact <" + _id + 
-					"> must contain a valid firstName.");
-		}
-		if (contact.getLastName() == null || contact.getLastName().length() == 0) {
-			throw new ValidationException("contact <" + _id + 
-					"> must contain a valid lastName.");
-		}
-		if (contact.getFn() != null && contact.getFn().length() > 0) {
-			logger.warning("fn contains a value <" + contact.getFn() + 
-					"> that will be overwritten by createContact (reason: fn is always derived from firstName and lastName).");
-		}
-		contact.setFn(contact.getFirstName() + " " + contact.getLastName());
+		contact.setFn(createFullName(_id, contact.getFn(), contact.getFirstName(), contact.getLastName()));
 		contact.setId(_id);
 		Date _date = new Date();
 		contact.setCreatedAt(_date);
-		contact.setCreatedBy("DUMMY_USER");
+		contact.setCreatedBy(getPrincipal());
 		contact.setModifiedAt(_date);
-		contact.setModifiedBy("DUMMY_USER");
+		contact.setModifiedBy(getPrincipal());
 		
 		ABcontact _abContact = new ABcontact();
 		_abContact.setModel(contact);
@@ -398,19 +386,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			logger.warning("contact <" + cid + ">: ignoring createdBy value <" + contact.getCreatedBy() + 
 					"> because it was set on the client.");
 		}
-		if (contact.getFirstName() == null || contact.getFirstName().length() == 0) {
-			logger.warning("contact <" + cid + 
-					"> must contain a valid firstName.");
-		}
-		if (contact.getLastName() == null || contact.getLastName().length() == 0) {
-			throw new ValidationException("contact <" + cid + 
-					"> must contain a valid lastName.");
-		}
-		if (contact.getFn() != null && contact.getFn().length() > 0) {
-			logger.warning("contact <" + cid + ">: fn contains value <" + contact.getFn() + 
-					">. This will be overwritten by updateContact (reason: fn is always derived from firstName and lastName).");
-		}
-		contact.setFn(contact.getFirstName() + " " + contact.getLastName());
+		contact.setFn(createFullName(cid, contact.getFn(), contact.getFirstName(), contact.getLastName()));
 		_cm.setPhotoUrl(contact.getPhotoUrl());
 		_cm.setFirstName(contact.getFirstName());
 		_cm.setLastName(contact.getLastName());
@@ -425,13 +401,34 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		_cm.setBirthday(contact.getBirthday());
 		_cm.setNote(contact.getNote());
 		_cm.setModifiedAt(new Date());
-		_cm.setModifiedBy("DUMMY_USER");
+		_cm.setModifiedBy(getPrincipal());
 		_c.setModel(_cm);
 		logger.info("updateContact(" + aid + ", " + cid + ", "+ PrettyPrinter.prettyPrintAsJSON(_cm) + ") -> OK");
 		exportJson(abookIndex.values());
 		return _cm;
 	}
-
+	
+	private String createFullName(String cid, String fn, String firstName, String lastName)
+		throws ValidationException {
+		if ((firstName == null || firstName.isEmpty()) && (lastName == null || lastName.isEmpty())) {
+				throw new ValidationException("contact <" + cid + 
+						"> must contain either a first or last name.");
+		}
+		if (fn != null && !fn.isEmpty()) {
+			logger.warning("contact <" + cid + ">: fn contains value <" + fn + 
+					">. This will be overwritten by updateContact (reason: fn is always derived from firstName and lastName).");
+		}
+		if (firstName == null || firstName.isEmpty()) {
+			return lastName;
+		}
+		else if (lastName == null || lastName.isEmpty()) {
+			return firstName;
+		}
+		else {
+			return firstName + " " + lastName;
+		}
+	}
+	
 	@Override
 	public void deleteContact(
 			String aid, 
@@ -441,8 +438,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 	{
 		ABaddressbook _abab = readAddressbook(aid);		// verify existence of addressbook
 		if (_abab.removeContact(cid) == false) {
-			throw new InternalServerErrorException("contact <" + cid + "> could not be removed from addressbook <"
-				+ aid + ">, because it was not listed as a member of the addressbook.");
+			throw new NotFoundException("contact <" + cid + "> was not found in addressbook <" + aid +">.");
 		}
 		removeContactFromIndex(cid);
 					
@@ -498,9 +494,9 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		org.setId(_id);
 		Date _date = new Date();
 		org.setCreatedAt(_date);
-		org.setCreatedBy("DUMMY_USER");
+		org.setCreatedBy(getPrincipal());
 		org.setModifiedAt(_date);
-		org.setModifiedBy("DUMMY_USER");
+		org.setModifiedBy(getPrincipal());
 		
 		ABorg _abOrg = new ABorg();
 		_abOrg.setModel(org);
@@ -569,7 +565,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		_om.setOrgType(org.getOrgType());
 		_om.setLogoUrl(org.getLogoUrl());
 		_om.setModifiedAt(new Date());
-		_om.setModifiedBy("DUMMY_USER");
+		_om.setModifiedBy(getPrincipal());
 		_abOrg.setModel(_om);
 		logger.info("updateOrg(" + aid + ", " + oid + ", "+ PrettyPrinter.prettyPrintAsJSON(_om) + ") -> OK");
 		exportJson(abookIndex.values());
@@ -584,8 +580,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			InternalServerErrorException {
 		ABaddressbook _abab = readAddressbook(aid);		// verify existence of addressbook
 		if (_abab.removeOrg(oid) == false) {
-			throw new InternalServerErrorException("org <" + oid + "> could not be removed from addressbook <"
-				+ aid + ">, because it was not listed as a member of the addressbook.");
+			throw new NotFoundException("org <" + oid + "> was not found in addressbook <" + aid +">.");
 		}
 		removeOrgFromIndex(oid);
 					
@@ -651,31 +646,44 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			case EMAIL:
 			case WEB:
 				if (address.getValue() == null || address.getValue().length() == 0) {
-					throw new ValidationException("address <" + _id + 
+					throw new ValidationException(address.getAddressType().toString() + " address <" + _id + 
 							"> must contain a value.");					
 				}
+				address.setMsgType(null);
+				address.setStreet(null);
+				address.setPostalCode(null);
+				address.setCity(null);
+				address.setCountryCode((short) 0);
 				break;
 			case MESSAGING:
 				if (address.getValue() == null || address.getValue().length() == 0) {
-					throw new ValidationException("messaging address <" + _id + 
+					throw new ValidationException(address.getAddressType().toString() + " address <" + _id + 
 							"> must contain a value.");					
 				}
 				if (address.getMsgType() == null) {
-					throw new ValidationException("messaging address <" + _id + 
+					throw new ValidationException(address.getAddressType().toString() + " address <" + _id + 
 							"> must contain a messageType.");										
 				}
+				address.setStreet(null);
+				address.setPostalCode(null);
+				address.setCity(null);
+				address.setCountryCode((short) 0);				
 				break;
 			case POSTAL:		// no mandatory fields
+				address.setMsgType(null);
+				address.setValue(null);
 				break;
 			default:
-				throw new ValidationException("invalid addressType: " + address.getAddressType());
+				throw new ValidationException("address <" + _id + 
+						"> can not be created, because it contains an invalid addressType: " + 
+						address.getAddressType());
 		}
 		address.setId(_id);
 		Date _date = new Date();
 		address.setCreatedAt(_date);
-		address.setCreatedBy("DUMMY_USER");
+		address.setCreatedBy(getPrincipal());
 		address.setModifiedAt(_date);
-		address.setModifiedBy("DUMMY_USER");
+		address.setModifiedBy(getPrincipal());
 		addressIndex.put(_id, address);
 		_c.addAddress(address);
 		logger.info("createAddress(" + aid + ", " + cid + ", "+ PrettyPrinter.prettyPrintAsJSON(address) + ")");
@@ -727,6 +735,10 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			throw new ValidationException("address <" + adrid + 
 					"> can not be updated, because the new address must contain an addressType.");
 		}
+		if (address.getAddressType() != _am.getAddressType()) {
+			throw new ValidationException("address <" + adrid +
+					"> can not be updated, because it is not allowed to change the AddressType.");
+		}
 		if (address.getAttributeType() == null) {
 			throw new ValidationException("address <" + adrid + 
 					"> can not be updated, because the new address must contain an attributeType.");					
@@ -736,36 +748,37 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		case EMAIL:
 		case WEB:
 			if (address.getValue() == null || address.getValue().length() == 0) {
-				throw new ValidationException("address <" + adrid + 
+				throw new ValidationException(address.getAddressType().toString() + " address <" + adrid + 
 						"> can not be updated, because the new address must contain a value.");					
 			}
+			_am.setAttributeType(address.getAttributeType());
+			_am.setValue(address.getValue());
 			break;
 		case MESSAGING:
 			if (address.getValue() == null || address.getValue().length() == 0) {
-				throw new ValidationException("messaging address <" + adrid + 
+				throw new ValidationException(address.getAddressType().toString() + " address <" + adrid + 
 						"> can not be updated, because the new address must contain a value.");					
 			}
 			if (address.getMsgType() == null) {
-				throw new ValidationException("messaging address <" + adrid + 
+				throw new ValidationException(address.getAddressType().toString() + " address <" + adrid + 
 						"> can not be updated, because the new address must contain a msgType.");										
 			}
+			_am.setAttributeType(address.getAttributeType());
+			_am.setMsgType(address.getMsgType());
+			_am.setValue(address.getValue());
 			break;
 		case POSTAL:		// no mandatory fields
+			_am.setStreet(address.getStreet());
+			_am.setPostalCode(address.getPostalCode());
+			_am.setCity(address.getCity());
+			_am.setCountryCode(address.getCountryCode());
 			break;
 		default:
 			throw new ValidationException("address <" + adrid + 
-					"> can not be updated, because the new address has an invalid addressType: " + address.getAddressType());
+					"> can not be updated, because the new address has an invalid addressType: " + address.getAddressType().toString());
 		}
-		_am.setAddressType(address.getAddressType());
-		_am.setAttributeType(address.getAttributeType());
-		_am.setMsgType(address.getMsgType());
-		_am.setValue(address.getValue());
-		_am.setStreet(address.getStreet());
-		_am.setPostalCode(address.getPostalCode());
-		_am.setCity(address.getCity());
-		_am.setCountry(address.getCountry());
 		_am.setModifiedAt(new Date());
-		_am.setModifiedBy("DUMMY_USER");
+		_am.setModifiedBy(getPrincipal());
 		addressIndex.put(adrid, _am);
 		_abContact.replaceAddress(_am);
 		logger.info("updateAddress(" + aid + ", " + cid + ", " + adrid + ") -> " +
