@@ -337,21 +337,6 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		return contact;
 	}
 	
-	/**
-	 * @param id
-	 * @return
-	 * @throws NotFoundException
-	 */
-	private ABcontact readABcontact(
-			String id)
-		throws NotFoundException {
-		ABcontact _c = contactIndex.get(id);
-		if (_c == null) {
-			throw new NotFoundException("contact <" + id + "> was not found.");			
-		}
-		return _c;
-	}
-
 	/* (non-Javadoc)
 	 * @see org.opentdc.addressbooks.ServiceProvider#readContact(java.lang.String, java.lang.String)
 	 */
@@ -361,12 +346,33 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			String cid) 
 				throws NotFoundException {
 		readAddressbook(aid);		// verify existence of addressbook
-		ABcontact _abContact = readABcontact(cid);
-		logger.info("readContact(" + aid + ", " + cid + ") -> "
+		return getContactModel(cid);
+	}
+	
+	public static ContactModel getContactModel(
+			String contactId)
+			throws NotFoundException {
+		ABcontact _abContact = readABcontact(contactId);
+		logger.info("getContactModel(" + contactId + ") -> "
 				+ PrettyPrinter.prettyPrintAsJSON(_abContact.getModel()));
 		return _abContact.getModel();
 	}
 	
+	/**
+	 * @param id
+	 * @return
+	 * @throws NotFoundException
+	 */
+	private static ABcontact readABcontact(
+			String id)
+		throws NotFoundException {
+		ABcontact _c = contactIndex.get(id);
+		if (_c == null) {
+			throw new NotFoundException("contact <" + id + "> was not found.");			
+		}
+		return _c;
+	}
+
 	@Override
 	public ContactModel updateContact(
 			String aid, 
@@ -827,7 +833,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			contactIndex.put(abContact.getModel().getId(), abContact);
 		}
 	}
-
+	
 	private void removeContactFromIndex(
 			String cid) 
 	{
