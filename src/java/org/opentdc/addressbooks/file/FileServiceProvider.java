@@ -491,8 +491,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			}
 		}
 		if (org.getName() == null || org.getName().length() == 0) {
-			throw new ValidationException("org <" + _id + 
-						"> must contain a name.");
+			throw new ValidationException("org <" + _id + "> must contain a name.");
 		}
 		if (org.getOrgType() == null) {
 			org.setOrgType(OrgType.getDefaultOrgType());
@@ -557,8 +556,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 					"> because it was set on the client.");
 		}
 		if (org.getName() == null || org.getName().length() == 0) {
-			throw new ValidationException("org <" + oid + 
-						"> must contain a name.");
+			throw new ValidationException("org <" + oid + "> must contain a name.");
 		}
 		if (org.getOrgType() == null) {
 			org.setOrgType(OrgType.getDefaultOrgType());
@@ -640,12 +638,10 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			}
 		}
 		if (address.getAddressType() == null) {
-			throw new ValidationException("address <" + _id + 
-					"> must contain an addressType.");
+			throw new ValidationException("address <" + _id + "> must contain an addressType.");
 		}
 		if (address.getAttributeType() == null) {
-			throw new ValidationException("address <" + _id + 
-					"> must contain an attributeType.");					
+			throw new ValidationException("address <" + _id + "> must contain an attributeType.");					
 		}
 		switch(address.getAddressType()) {
 			case PHONE:
