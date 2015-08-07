@@ -123,7 +123,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 
 	/**
 	 * Creates a new addressbook. Addressbooks are grouping contacts and orgs; they are a subset of all contacts or orgs.
-	 * The addressbook 'all' is implicit. It can not be created nor updated or deleted. Its contacts can be listed with allContacts.
+	 * The addressbook 'all' is implicit. It can not be created nor updated or deleted. Its contacts can be listed with allContacts resp. allOrgs.
 	 * @param addressbook the new addressbook data
 	 * @return the newly created addressbook; this is the addressbook parameter data plus a newly created id.
 	 * @throws DuplicateException if an addressbook with the same id already exists
@@ -257,6 +257,31 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			}
 		}
 		logger.info("listAllContacts(<" + query + ">, <" + queryType + 
+				">, <" + position + ">, <" + size + ">) -> " + _selection.size()
+				+ " values");
+		return _selection;
+	}
+
+	@Override
+	public ArrayList<OrgModel> listAllOrgs(
+			String query, 
+			String queryType, 
+			int position, 
+			int size
+	) {
+		ArrayList<OrgModel> _orgs = new ArrayList<OrgModel>(); 
+		for (ABorg _abOrg : orgIndex.values()) {
+			_orgs.add(_abOrg.getModel());
+		}
+
+		Collections.sort(_orgs, OrgModel.OrgComparator);
+		ArrayList<OrgModel> _selection = new ArrayList<OrgModel>(); 
+		for (int i = 0; i < _orgs.size(); i++) {
+			if (i >= position && i < (position + size)) {
+				_selection.add(_orgs.get(i));
+			}
+		}
+		logger.info("listAllOrgs(<" + query + ">, <" + queryType + 
 				">, <" + position + ">, <" + size + ">) -> " + _selection.size()
 				+ " values");
 		return _selection;
@@ -592,7 +617,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		exportJson(abookIndex.values());
 	}
 	
-	/******************************** address *****************************************/	
+	/******************************** address (of contacts) *****************************************/	
 	@Override
 	public List<AddressModel> listAddresses(
 			String aid, 
@@ -621,9 +646,20 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			String aid, 
 			String cid,
 			AddressModel address) 
-					throws DuplicateException {
+					throws ValidationException, DuplicateException {
 		readAddressbook(aid);		// verify existence of addressbook
-		ABcontact _c = readABcontact(cid);
+		ABcontact _contact = readABcontact(cid);
+		AddressModel _newAddress = validateNewAddress(address);
+		addressIndex.put(_newAddress.getId(), _newAddress);
+		_contact.addAddress(_newAddress);
+		logger.info("createAddress(" + aid + ", " + cid + ", "+ PrettyPrinter.prettyPrintAsJSON(address) + ")");
+		exportJson(abookIndex.values());
+		return _newAddress;
+	}
+	
+	private AddressModel validateNewAddress(
+			AddressModel address) 
+				throws ValidationException, DuplicateException {
 		String _id = address.getId();
 		if (_id == null || _id == "") {
 			_id = UUID.randomUUID().toString();
@@ -686,11 +722,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		address.setCreatedBy(getPrincipal());
 		address.setModifiedAt(_date);
 		address.setModifiedBy(getPrincipal());
-		addressIndex.put(_id, address);
-		_c.addAddress(address);
-		logger.info("createAddress(" + aid + ", " + cid + ", "+ PrettyPrinter.prettyPrintAsJSON(address) + ")");
-		exportJson(abookIndex.values());
-		return address;
+		return address;		
 	}
 	
 	private AddressModel getAddress(String id) {
@@ -724,13 +756,28 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 				throws NotFoundException, ValidationException {
 		readAddressbook(aid);		// verify existence of addressbook
 		ABcontact _abContact = readABcontact(cid);			// verify existence of contact
+		AddressModel _am = validateChangedAddress("contact", cid, adrid, address);
+		addressIndex.put(adrid, _am);
+		_abContact.replaceAddress(_am);
+		logger.info("updateAddress(" + aid + ", " + cid + ", " + adrid + ") -> " +
+				PrettyPrinter.prettyPrintAsJSON(_am));
+		exportJson(abookIndex.values());
+		return _am;
+	}
+	
+	private AddressModel validateChangedAddress(
+			String parentType, 
+			String pid, 
+			String adrid, 
+			AddressModel address) 
+					throws NotFoundException, ValidationException {
 		AddressModel _am = getAddress(adrid);
 		if (! _am.getCreatedAt().equals(address.getCreatedAt())) {
-			logger.warning("contact<" + cid + ">: ignoring createdAt value <" + address.getCreatedAt().toString() + 
+			logger.warning(parentType + " <" + pid + ">: ignoring createdAt value <" + address.getCreatedAt().toString() + 
 					"> because it was set on the client.");
 		}
 		if (! _am.getCreatedBy().equalsIgnoreCase(address.getCreatedBy())) {
-			logger.warning("contact<" + cid + ">: ignoring createdBy value <" + address.getCreatedBy() +
+			logger.warning(parentType + " <" + pid + ">: ignoring createdBy value <" + address.getCreatedBy() +
 					"> because it was set on the client.");
 		}
 		if (address.getAddressType() == null) {
@@ -781,11 +828,6 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		}
 		_am.setModifiedAt(new Date());
 		_am.setModifiedBy(getPrincipal());
-		addressIndex.put(adrid, _am);
-		_abContact.replaceAddress(_am);
-		logger.info("updateAddress(" + aid + ", " + cid + ", " + adrid + ") -> " +
-				PrettyPrinter.prettyPrintAsJSON(_am));
-		exportJson(abookIndex.values());
 		return _am;
 	}
 
@@ -810,6 +852,101 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		logger.info("deleteAddress(" + aid + ", " + cid + ", " + adrid + ") -> OK");
 		exportJson(abookIndex.values());
 	}
+
+	/******************************** address (of orgs) *****************************************/	
+	@Override
+	public List<AddressModel> listOrgAddresses(
+			String aid, 
+			String oid,
+			String query, 
+			String queryType, 
+			int position, 
+			int size) {
+		readAddressbook(aid);		// verify existence of addressbook
+		ABorg _org = readABorg(oid);
+		List<AddressModel> _addresses = _org.getAddresses();
+		Collections.sort(_addresses, AddressModel.AddressComparator);
+		ArrayList<AddressModel> _selection = new ArrayList<AddressModel>();
+		for (int i = 0; i < _addresses.size(); i++) {
+			if (i >= position && i < (position + size)) {
+				_selection.add(_addresses.get(i));
+			}
+		}		
+		logger.info("listAddresses(" + aid + ", " + oid + ", " + query + ", " + 
+				queryType + ", " + position + ", " + size + ") -> " + _selection.size()	+ " values");
+		return _selection;
+	}
+
+	@Override
+	public AddressModel createOrgAddress(
+			String aid, 
+			String oid,
+			AddressModel address) 
+					throws ValidationException, DuplicateException {
+		readAddressbook(aid);		// verify existence of addressbook
+		ABorg _org = readABorg(oid);
+		AddressModel _newAddress = validateNewAddress(address);
+		addressIndex.put(_newAddress.getId(), _newAddress);
+		_org.addAddress(_newAddress);
+		logger.info("createAddress(" + aid + ", " + oid + ", "+ PrettyPrinter.prettyPrintAsJSON(address) + ")");
+		exportJson(abookIndex.values());
+		return _newAddress;
+	}
+	
+	@Override
+	public AddressModel readOrgAddress(
+			String aid, 
+			String oid, 
+			String adrid)
+					throws NotFoundException {
+		readAddressbook(aid);		// verify existence of addressbook
+		readABorg(oid);			// verify existence of org
+		AddressModel _address = getAddress(adrid);
+		logger.info("readAddress(" + aid + ", " + oid + ", " + adrid + ") -> " +
+				PrettyPrinter.prettyPrintAsJSON(_address));
+		return _address;
+	}
+
+	@Override
+	public AddressModel updateOrgAddress(
+			String aid, 
+			String oid, 
+			String adrid,
+			AddressModel address) 
+				throws NotFoundException, ValidationException {
+		readAddressbook(aid);		// verify existence of addressbook
+		ABorg _abOrg = readABorg(oid);			// verify existence of org
+		AddressModel _am = validateChangedAddress("org", oid, adrid, address);
+		addressIndex.put(adrid, _am);
+		_abOrg.replaceAddress(_am);
+		logger.info("updateAddress(" + aid + ", " + oid + ", " + adrid + ") -> " +
+				PrettyPrinter.prettyPrintAsJSON(_am));
+		exportJson(abookIndex.values());
+		return _am;
+	}
+
+	@Override
+	public void deleteOrgAddress(
+			String aid, 
+			String oid, 
+			String adrid)
+			throws NotFoundException, InternalServerErrorException {
+		readAddressbook(aid);		// verify existence of addressbook
+		ABorg _org = readABorg(oid);			// verify existence of contact
+		AddressModel _adr = getAddress(adrid);
+		
+		if (_org.removeAddress(_adr) == false) {
+			throw new InternalServerErrorException("address <" + adrid + "> could not be removed from org <" 
+					+ oid + ">, because it was not listed as a member of the org.");
+		}
+		if (addressIndex.remove(adrid) == null) {
+			throw new InternalServerErrorException("address <" + adrid
+					+ "> can not be removed, because it does not exist in the index");	
+		}
+		logger.info("deleteAddress(" + aid + ", " + oid + ", " + adrid + ") -> OK");
+		exportJson(abookIndex.values());
+	}
+	
 	
 	/******************************** utility methods *****************************************/
 	private void addAbookToIndex(

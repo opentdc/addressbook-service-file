@@ -57,6 +57,16 @@ public class ABorg {
 		this.addresses.add(address);
 	}
 	
+	public void replaceAddress(AddressModel address) {
+		int _index = 0;
+		for (_index = 0; _index < this.addresses.size(); _index++) {
+			if (this.addresses.get(_index).getId().equalsIgnoreCase(address.getId())) {
+				break;
+			}
+		}
+		this.addresses.set(_index, address);
+	}
+	
 	public boolean removeAddress(AddressModel address) {
 		return this.addresses.remove(address);
 	}
