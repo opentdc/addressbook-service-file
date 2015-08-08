@@ -229,6 +229,9 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		for (String _cid : _adb.getContacts()) {
 			removeContactFromIndex(_cid);
 		}
+		for (String _oid : _adb.getOrgs()) {
+			removeOrgFromIndex(_oid);
+		}
 		if (abookIndex.remove(id) == null) {
 			throw new InternalServerErrorException("addressbook <" + id
 					+ "> can not be removed, because it does not exist in the index");
@@ -534,12 +537,12 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			_abOrg.incrementRefCounter();
 			readAddressbook(aid).addOrg(_id);
 		}
-		orgIndex.put(_id, _abOrg);
+		addOrgToIndex(_abOrg);	
 		logger.info("createOrg(" + aid + ", " + PrettyPrinter.prettyPrintAsJSON(_abOrg.getModel()) + ")");
 		exportJson(abookIndex.values());
 		return _abOrg.getModel();
 	}
-	
+
 	private ABorg readABorg(
 			String oid)
 		throws NotFoundException {
@@ -955,6 +958,9 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		for (String _cid : abook.getContacts()) {
 			addContactToIndex(readABcontact(_cid));
 		}
+		for (String _oid : abook.getOrgs()) {
+			addOrgToIndex(readABorg(_oid));
+		}
 	}
 	
 	private void addContactToIndex(
@@ -964,6 +970,16 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 				addressIndex.put(_address.getId(), _address);
 			}
 			contactIndex.put(abContact.getModel().getId(), abContact);
+		}
+	}
+	
+	private void addOrgToIndex(
+			ABorg abOrg) {
+		if (abOrg != null) {
+			for (AddressModel _address : abOrg.getAddresses()) {
+				addressIndex.put(_address.getId(), _address);
+			}
+			orgIndex.put(abOrg.getModel().getId(), abOrg);
 		}
 	}
 	
