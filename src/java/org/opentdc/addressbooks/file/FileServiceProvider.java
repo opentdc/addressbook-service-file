@@ -420,7 +420,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			logger.warning("contact <" + cid + ">: ignoring createdBy value <" + contact.getCreatedBy() + 
 					"> because it was set on the client.");
 		}
-		contact.setFn(createFullName(cid, contact.getFn(), contact.getFirstName(), contact.getLastName()));
+		_cm.setFn(createFullName(cid, contact.getFn(), contact.getFirstName(), contact.getLastName()));
 		_cm.setPhotoUrl(contact.getPhotoUrl());
 		_cm.setFirstName(contact.getFirstName());
 		_cm.setLastName(contact.getLastName());
@@ -444,23 +444,26 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 	
 	private String createFullName(String cid, String fn, String firstName, String lastName)
 		throws ValidationException {
+		String _fn = null;
 		if ((firstName == null || firstName.isEmpty()) && (lastName == null || lastName.isEmpty())) {
 				throw new ValidationException("contact <" + cid + 
 						"> must contain either a first or last name.");
 		}
 		if (fn != null && !fn.isEmpty()) {
 			logger.warning("contact <" + cid + ">: fn contains value <" + fn + 
-					">. This will be overwritten by updateContact (reason: fn is always derived from firstName and lastName).");
+					">. This will be overwritten (reason: fn is always derived from firstName and lastName).");
 		}
 		if (firstName == null || firstName.isEmpty()) {
-			return lastName;
+			_fn = lastName;
 		}
 		else if (lastName == null || lastName.isEmpty()) {
-			return firstName;
+			_fn = firstName;
 		}
 		else {
-			return firstName + " " + lastName;
+			_fn = firstName + " " + lastName;
 		}
+		logger.info("createFullName(" + cid + ", " + fn + ", " + firstName + ", " + lastName + ") -> <" + _fn + ">");
+		return _fn;
 	}
 	
 	@Override
