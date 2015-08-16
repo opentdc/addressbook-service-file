@@ -24,6 +24,7 @@
 package org.opentdc.addressbooks.file;
 
 import java.util.ArrayList;
+import java.util.Date;
 
 import org.opentdc.addressbooks.AddressModel;
 import org.opentdc.addressbooks.OrgModel;
@@ -31,10 +32,11 @@ import org.opentdc.addressbooks.OrgModel;
 public class ABorg {
 	private OrgModel model;
 	private ArrayList<AddressModel> addresses;
-	private int refCounter = 0;
+	private ArrayList<String> memberships;  // lists ids of addressbooks where this org is a member of
 	
 	public ABorg() {
 		addresses = new ArrayList<AddressModel>();
+		memberships = new ArrayList<String>();
 	}
 
 	public OrgModel getModel() {
@@ -71,19 +73,43 @@ public class ABorg {
 		return this.addresses.remove(address);
 	}
 	
-	public int getRefCounter() {
-		return refCounter;
+	public void setCreatedAt(Date createdAt) {
+		model.setCreatedAt(createdAt);
 	}
 	
-	public void setRefCounter(int refCounter) {
-		this.refCounter = refCounter;
+	public void setCreatedBy(String createdBy) {
+		model.setCreatedBy(createdBy);
 	}
 	
-	public void incrementRefCounter() {
-		refCounter++;
+	public void setModifiedAt(Date modifiedAt) {
+		model.setModifiedAt(modifiedAt);		
 	}
 	
-	public void decrementRefCounter() {
-		refCounter--;
+	public void setModifiedBy(String modifiedBy) {
+		model.setModifiedBy(modifiedBy);
 	}
+
+	/**
+	 * @return a list of Addressbook ids that contain this org
+	 */
+	public ArrayList<String> getMemberships() {
+		return memberships;
+	}
+	
+	public boolean isMemberOfAddressbook(String aid) {
+		return memberships.contains(aid);
+	}
+
+	public boolean addMembership(String aid) {
+		if (isMemberOfAddressbook(aid)) {
+			return false;
+		}
+		memberships.add(aid);
+		return true;
+	}
+	
+	public boolean removeMembership(String aid) {
+		return memberships.remove(aid);
+	}
+	
 }

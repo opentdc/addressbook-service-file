@@ -291,14 +291,17 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 	}
 
 	/******************************** contact *****************************************/
+	/* (non-Javadoc)
+	 * @see org.opentdc.addressbooks.ServiceProvider#listContacts(java.lang.String, java.lang.String, java.lang.String, int, int)
+	 */
 	@Override
 	public ArrayList<ContactModel> listContacts(
 			String aid,
 			String query, 
 			String queryType, 
 			int position, 
-			int size
-	) {
+			int size) 
+	{
 		ArrayList<ContactModel> _contacts = new ArrayList<ContactModel>(); 
 		for (String _cid : readAddressbook(aid).getContacts()) {
 			_contacts.add(readABcontact(_cid).getModel());
@@ -316,56 +319,56 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		return _selection;
 	}
 	
-	/**
-	 * Creates a new contact in addressbook aid.
-	 * If aid is null, the contact is created in the implicit 'all' addressbook.
-	 * @param aid
-	 * @param contact
-	 * @return
-	 * @throws DuplicateException
-	 * @throws ValidationException
+	/* (non-Javadoc)
+	 * @see org.opentdc.addressbooks.ServiceProvider#createContact(java.lang.String, org.opentdc.addressbooks.ContactModel)
 	 */
 	@Override
 	public ContactModel createContact(
 		String aid, 
-		ContactModel contact
-	) throws DuplicateException, ValidationException {
+		ContactModel contact) 
+				throws DuplicateException, ValidationException 
+	{
+		// logger.info("createContact(" + aid + ", " + PrettyPrinter.prettyPrintAsJSON(contact) + ")");
 		String _id = contact.getId();
 		if (_id == null || _id == "") {
 			_id = UUID.randomUUID().toString();
-		} else {
-			if (contactIndex.get(_id) != null) {
-				// contact with same ID exists already
-				throw new DuplicateException("contact <" + contact.getId() + 
+			contact.setId(_id);
+			String _fn = ContactModel.createFullName(contact.getFirstName(), contact.getLastName());
+			if (_fn == null) {
+				throw new ValidationException("contact <" + _id + 
+						"> must contain either a valid firstName and/or a valid lastName");
+			}
+			contact.setFn(_fn);
+			Date _date = new Date();
+			contact.setCreatedAt(_date);
+			contact.setCreatedBy(getPrincipal());
+			contact.setModifiedAt(_date);
+			contact.setModifiedBy(getPrincipal());
+			
+			ABcontact _abContact = new ABcontact();
+			_abContact.setModel(contact);
+			_abContact.addMembership(aid);
+			readAddressbook(aid).addContact(_id);
+			addContactToIndex(_abContact);	
+		} 
+		else {
+			ABcontact _contact = contactIndex.get(_id);
+			if (_contact != null) {		// same contact exists in index already
+				ABaddressbook _ab = readAddressbook(aid);
+				if (_ab.containsContact(_id) == true) {
+					throw new DuplicateException("contact <" + contact.getId() + 
 						"> exists already.");
+				} else {		// add the existing contact to this addressbook
+					_contact.addMembership(aid);
+					_ab.addContact(_id);
+				}	
 			}
 			else {  // a new ID was set on the client; we do not allow this
 				throw new ValidationException("contact <" + _id +
 						"> contains an ID generated on the client. This is not allowed.");
 			}
 		}
-		contact.setId(_id);
-		String _fn = ContactModel.createFullName(contact.getFirstName(), contact.getLastName());
-		if (_fn == null) {
-			throw new ValidationException("contact <" + _id + 
-					"> must contain either a valid firstName and/or a valid lastName");
-		}
-		contact.setFn(_fn);
-		Date _date = new Date();
-		contact.setCreatedAt(_date);
-		contact.setCreatedBy(getPrincipal());
-		contact.setModifiedAt(_date);
-		contact.setModifiedBy(getPrincipal());
-		
-		ABcontact _abContact = new ABcontact();
-		_abContact.setModel(contact);
-		
-		if (aid != null && !readAddressbook(aid).getModel().getName().equalsIgnoreCase("all")) {
-			_abContact.incrementRefCounter();
-			readAddressbook(aid).addContact(_id);
-		}
-		addContactToIndex(_abContact);	
-		logger.info("createContact(" + aid + ", " + PrettyPrinter.prettyPrintAsJSON(contact) + ")");
+		logger.info("createContact(" + aid + ", contact) -> " + PrettyPrinter.prettyPrintAsJSON(contact));
 		exportJson(abookIndex.values());
 		return contact;
 	}
@@ -378,7 +381,10 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			String aid,
 			String cid) 
 				throws NotFoundException {
-		readAddressbook(aid);		// verify existence of addressbook
+		ABaddressbook _abAddressbook = readAddressbook(aid);		// verify existence of addressbook
+		if (_abAddressbook.containsContact(cid) == false) {
+			throw new NotFoundException("contact <" + cid + "> was not found in Addressbook <" + aid +">.");
+		}
 		return getContactModel(cid);
 	}
 	
@@ -452,6 +458,11 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		return _cm;
 	}
 	
+	// deleting a contact from a custom addressbook -> remove it from the addressbook, but keep it in all addressbook
+	// deleting a contact from all addressbook -> remove it from all custom addressbooks
+	/* (non-Javadoc)
+	 * @see org.opentdc.addressbooks.ServiceProvider#deleteContact(java.lang.String, java.lang.String)
+	 */
 	@Override
 	public void deleteContact(
 			String aid, 
@@ -460,19 +471,35 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 					InternalServerErrorException 
 	{
 		ABaddressbook _abab = readAddressbook(aid);		// verify existence of addressbook
-		if (_abab.removeContact(cid) == false) {
-			throw new NotFoundException("contact <" + cid + "> was not found in addressbook <" + aid +">.");
+		ABcontact _contact = readABcontact(cid);		// throws NotFoundException
+		if (aid.equalsIgnoreCase(allAddressbook.getModel().getId())) { // all addressbook -> full delete
+			for (String _aid : _contact.getMemberships()) {
+				readAddressbook(_aid).removeContact(cid);
+			}
+			removeContactFromIndex(cid);			
+		} else {		// delete from custom addressbook
+			if (_abab.removeContact(cid) == false) {
+				throw new NotFoundException("contact <" + cid + "> was not found in addressbook <" + aid +">.");
+			}
+			_contact.removeMembership(aid);
 		}
-		removeContactFromIndex(cid);
 					
 		logger.info("deleteContact(" + aid + ", " + cid + ") -> OK");
 		exportJson(abookIndex.values());
 	}
 
 	/******************************** org *****************************************/
+	/* (non-Javadoc)
+	 * @see org.opentdc.addressbooks.ServiceProvider#listOrgs(java.lang.String, java.lang.String, java.lang.String, int, int)
+	 */
 	@Override
-	public List<OrgModel> listOrgs(String aid, String query, String queryType,
-			int position, int size) {
+	public List<OrgModel> listOrgs(
+			String aid, 
+			String query, 
+			String queryType,
+			int position, 
+			int size) 
+	{
 		ArrayList<OrgModel> _orgs = new ArrayList<OrgModel>(); 
 		for (String _oid : readAddressbook(aid).getOrgs()) {
 			_orgs.add(readABorg(_oid).getModel());
@@ -490,48 +517,63 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		return _selection;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.opentdc.addressbooks.ServiceProvider#createOrg(java.lang.String, org.opentdc.addressbooks.OrgModel)
+	 */
 	@Override
-	public OrgModel createOrg(String aid, OrgModel org)
-			throws DuplicateException, ValidationException {
+	public OrgModel createOrg(
+			String aid, 
+			OrgModel org)
+					throws DuplicateException, ValidationException 
+	{
 		String _id = org.getId();
 		if (_id == null || _id == "") {
 			_id = UUID.randomUUID().toString();
+			org.setId(_id);
+			if (org.getName() == null || org.getName().length() == 0) {
+				throw new ValidationException("org <" + _id + "> must contain a name.");
+			}
+			if (org.getOrgType() == null) {
+				org.setOrgType(OrgType.getDefaultOrgType());
+			}
+			Date _date = new Date();
+			org.setCreatedAt(_date);
+			org.setCreatedBy(getPrincipal());
+			org.setModifiedAt(_date);
+			org.setModifiedBy(getPrincipal());
+			
+			ABorg _abOrg = new ABorg();
+			_abOrg.setModel(org);
+			_abOrg.addMembership(aid);
+			readAddressbook(aid).addOrg(_id);
+			addOrgToIndex(_abOrg);	
 		} else {
-			if (orgIndex.get(_id) != null) {
-				// org with same ID exists already
-				throw new DuplicateException("org <" + org.getId() + 
-						"> exists already.");
+			ABorg _org = orgIndex.get(_id);
+			if (_org != null) {	// same org exists in index already
+				ABaddressbook _ab = readAddressbook(aid);
+				if (_ab.containsOrg(_id) == true) {
+					throw new DuplicateException("org <" + org.getId() + 
+							"> exists already.");
+				} else {	// add the existing org to this addressbook
+					_org.addMembership(aid);
+					_ab.addOrg(_id);
+				}
 			}
 			else {  // a new ID was set on the client; we do not allow this
 				throw new ValidationException("org <" + _id +
 						"> contains an ID generated on the client. This is not allowed.");
 			}
 		}
-		if (org.getName() == null || org.getName().length() == 0) {
-			throw new ValidationException("org <" + _id + "> must contain a name.");
-		}
-		if (org.getOrgType() == null) {
-			org.setOrgType(OrgType.getDefaultOrgType());
-		}
-		org.setId(_id);
-		Date _date = new Date();
-		org.setCreatedAt(_date);
-		org.setCreatedBy(getPrincipal());
-		org.setModifiedAt(_date);
-		org.setModifiedBy(getPrincipal());
-		
-		ABorg _abOrg = new ABorg();
-		_abOrg.setModel(org);
-		if (aid != null && !readAddressbook(aid).getModel().getName().equalsIgnoreCase("all")) {
-			_abOrg.incrementRefCounter();
-			readAddressbook(aid).addOrg(_id);
-		}
-		addOrgToIndex(_abOrg);	
-		logger.info("createOrg(" + aid + ", " + PrettyPrinter.prettyPrintAsJSON(_abOrg.getModel()) + ")");
+		logger.info("createOrg(" + aid + ", " + PrettyPrinter.prettyPrintAsJSON(org) + ")");
 		exportJson(abookIndex.values());
-		return _abOrg.getModel();
+		return org;
 	}
 
+	/**
+	 * @param oid
+	 * @return
+	 * @throws NotFoundException
+	 */
 	private ABorg readABorg(
 			String oid)
 		throws NotFoundException {
@@ -542,18 +584,27 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		return _aborg;
 	}
 	
+	/* (non-Javadoc)
+	 * @see org.opentdc.addressbooks.ServiceProvider#readOrg(java.lang.String, java.lang.String)
+	 */
 	@Override
 	public OrgModel readOrg(
 			String aid, 
 			String oid) 
 					throws NotFoundException {
-		readAddressbook(aid);		// verify existence of addressbook
+		ABaddressbook _abAddressbook = readAddressbook(aid);		// verify existence of addressbook
+		if (_abAddressbook.containsOrg(oid) == false) {
+			throw new NotFoundException("contact <" + oid + "> was not found in Addressbook <" + aid +">.");
+		}
 		ABorg _abOrg = readABorg(oid);
 		logger.info("readOrg(" + aid + ", " + oid + ") -> "
 				+ PrettyPrinter.prettyPrintAsJSON(_abOrg.getModel()));
 		return _abOrg.getModel();
 	}
 
+	/* (non-Javadoc)
+	 * @see org.opentdc.addressbooks.ServiceProvider#updateOrg(java.lang.String, java.lang.String, org.opentdc.addressbooks.OrgModel)
+	 */
 	@Override
 	public OrgModel updateOrg(
 			String aid, 
@@ -593,19 +644,31 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		return _om;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.opentdc.addressbooks.ServiceProvider#deleteOrg(java.lang.String, java.lang.String)
+	 */
 	@Override
 	public void deleteOrg(
 			String aid, 
 			String oid) 
 					throws NotFoundException,
-			InternalServerErrorException {
+					InternalServerErrorException 
+	{
 		ABaddressbook _abab = readAddressbook(aid);		// verify existence of addressbook
-		if (_abab.removeOrg(oid) == false) {
-			throw new NotFoundException("org <" + oid + "> was not found in addressbook <" + aid +">.");
+		ABorg _org = readABorg(oid);
+		if (aid.equalsIgnoreCase(allAddressbook.getModel().getId())) {	// all addressbook -> full delete
+			for (String _aid : _org.getMemberships()) {
+				readAddressbook(_aid).removeOrg(oid);
+			}
+			removeOrgFromIndex(oid);
+		} else {		// delete from custom addressbook
+			if (_abab.removeOrg(oid) == false) {
+				throw new NotFoundException("org <" + oid + "> was not found in addressbook <" + aid +">.");
+			}		
+			_org.removeMembership(aid);
 		}
-		removeOrgFromIndex(oid);
 					
-		logger.info("deleteContact(" + aid + ", " + oid + ") -> OK");
+		logger.info("deleteOrg(" + aid + ", " + oid + ") -> OK");
 		exportJson(abookIndex.values());
 	}
 	
@@ -973,26 +1036,21 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 	}
 	
 	private void removeContactFromIndex(
-			String cid) 
+		String cid) 
 	{
 		if (cid != null) {
 			ABcontact _abContact = readABcontact(cid);
-			if (_abContact.getRefCounter() == 1) {
-				for (AddressModel _address : _abContact.getAddresses()) {
-					if (addressIndex.remove(_address.getId()) == null) {
-						throw new InternalServerErrorException("address <" + _address.getId()
-								+ "> can not be removed, because it does not exist in the index");	
-					}
+			for (AddressModel _address : _abContact.getAddresses()) {
+				if (addressIndex.remove(_address.getId()) == null) {
+					throw new InternalServerErrorException("address <" + _address.getId()
+							+ "> can not be removed, because it does not exist in the index");	
 				}
-				if ((contactIndex.remove(cid)) == null) {
-					throw new InternalServerErrorException("contact <" + cid
-							+ "> can not be removed, because it does not exist in the index");
-				}
-				logger.info("removed contact <" + cid + "> from index.");
 			}
-			else {
-				_abContact.decrementRefCounter();
+			if ((contactIndex.remove(cid)) == null) {
+				throw new InternalServerErrorException("contact <" + cid
+					+ "> can not be removed, because it does not exist in the index");
 			}
+			logger.info("removed contact <" + cid + "> from index.");
 		}
 	}
 	
@@ -1001,22 +1059,21 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 	{
 		if (oid != null) {
 			ABorg _abOrg = readABorg(oid);
-			if (_abOrg.getRefCounter() == 1) {
-				for (AddressModel _address : _abOrg.getAddresses()) {
-					if (addressIndex.remove(_address.getId()) == null) {
-						throw new InternalServerErrorException("address <" + _address.getId()
-								+ "> can not be removed, because it does not exist in the index");
-					}
-				}
-				if ((orgIndex.remove(oid)) == null) {
-					throw new InternalServerErrorException("org <" + oid
+			for (AddressModel _address : _abOrg.getAddresses()) {
+				if (addressIndex.remove(_address.getId()) == null) {
+					throw new InternalServerErrorException("address <" + _address.getId()
 							+ "> can not be removed, because it does not exist in the index");
-				}				
-				logger.info("removed org <" + oid + "> from index.");
+				}
 			}
-			else {
-				_abOrg.decrementRefCounter();
-			}
+			if ((orgIndex.remove(oid)) == null) {
+				throw new InternalServerErrorException("org <" + oid
+						+ "> can not be removed, because it does not exist in the index");
+			}				
+			logger.info("removed org <" + oid + "> from index.");
 		}
+	}
+	
+	public static ABaddressbook getAllAddressbook() {
+		return allAddressbook;
 	}
 }

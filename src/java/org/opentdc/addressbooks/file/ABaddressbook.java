@@ -55,6 +55,15 @@ public class ABaddressbook {
 	public List<String> getContacts() {
 		return contactIds;
 	}
+	
+	public boolean containsContact(String cid) {
+		for (String _id : contactIds) {
+			if (_id.equalsIgnoreCase(cid)) {
+				return true;
+			}
+		}
+		return false;
+	}
 		
 	public void addContact(String cid) {
 		this.contactIds.add(cid);
@@ -71,6 +80,15 @@ public class ABaddressbook {
 		return orgIds;
 	}
 
+	public boolean containsOrg(String oid) {
+		for (String _id : orgIds) {
+			if (_id.equalsIgnoreCase(oid)) {
+				return true;
+			}
+		}
+		return false;
+	}
+		
 	/**
 	 * @param orgs the orgs to set
 	 */

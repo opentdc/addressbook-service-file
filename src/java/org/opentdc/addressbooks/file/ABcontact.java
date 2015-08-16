@@ -32,11 +32,11 @@ import org.opentdc.addressbooks.ContactModel;
 public class ABcontact {
 	private ContactModel model;
 	private ArrayList<AddressModel> addresses;
-	private int refCounter = 0;
+	private ArrayList<String> memberships;		// lists ids of addressbooks where this contact is a member of
 	
 	public ABcontact() {
 		addresses = new ArrayList<AddressModel>();
-		refCounter = 0;
+		memberships = new ArrayList<String>();
 	}
 
 	public ContactModel getModel() {
@@ -45,22 +45,6 @@ public class ABcontact {
 
 	public void setModel(ContactModel contactModel) {
 		this.model = contactModel;
-	}
-	
-	public int getRefCounter() {
-		return refCounter;
-	}
-	
-	public void setRefCounter(int refCounter) {
-		this.refCounter = refCounter;
-	}
-	
-	public void incrementRefCounter() {
-		refCounter++;
-	}
-	
-	public void decrementRefCounter() {
-		refCounter--;
 	}
 	
 	public ArrayList<AddressModel> getAddresses() {
@@ -102,5 +86,28 @@ public class ABcontact {
 	
 	public void setModifiedBy(String modifiedBy) {
 		model.setModifiedBy(modifiedBy);
+	}
+
+	/**
+	 * @return a list of Addressbook ids that contain this contact
+	 */
+	public ArrayList<String> getMemberships() {
+		return memberships;
+	}
+	
+	public boolean isMemberOfAddressbook(String aid) {
+		return memberships.contains(aid);
+	}
+
+	public boolean addMembership(String aid) {
+		if (isMemberOfAddressbook(aid)) {
+			return false;
+		}
+		memberships.add(aid);
+		return true;
+	}
+	
+	public boolean removeMembership(String aid) {
+		return memberships.remove(aid);
 	}
 }
