@@ -344,8 +344,13 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 						"> contains an ID generated on the client. This is not allowed.");
 			}
 		}
-		contact.setFn(createFullName(_id, contact.getFn(), contact.getFirstName(), contact.getLastName()));
 		contact.setId(_id);
+		String _fn = ContactModel.createFullName(contact.getFirstName(), contact.getLastName());
+		if (_fn == null) {
+			throw new ValidationException("contact <" + _id + 
+					"> must contain either a valid firstName and/or a valid lastName");
+		}
+		contact.setFn(_fn);
 		Date _date = new Date();
 		contact.setCreatedAt(_date);
 		contact.setCreatedBy(getPrincipal());
@@ -420,7 +425,12 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			logger.warning("contact <" + cid + ">: ignoring createdBy value <" + contact.getCreatedBy() + 
 					"> because it was set on the client.");
 		}
-		_cm.setFn(createFullName(cid, contact.getFn(), contact.getFirstName(), contact.getLastName()));
+		String _fn = ContactModel.createFullName(contact.getFirstName(), contact.getLastName());
+		if (_fn == null) {
+			throw new ValidationException("contact <" + cid + 
+					"> must contain either a valid firstName and/or a valid lastName");
+		}
+		_cm.setFn(_fn);
 		_cm.setPhotoUrl(contact.getPhotoUrl());
 		_cm.setFirstName(contact.getFirstName());
 		_cm.setLastName(contact.getLastName());
@@ -440,30 +450,6 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		logger.info("updateContact(" + aid + ", " + cid + ", "+ PrettyPrinter.prettyPrintAsJSON(_cm) + ") -> OK");
 		exportJson(abookIndex.values());
 		return _cm;
-	}
-	
-	private String createFullName(String cid, String fn, String firstName, String lastName)
-		throws ValidationException {
-		String _fn = null;
-		if ((firstName == null || firstName.isEmpty()) && (lastName == null || lastName.isEmpty())) {
-				throw new ValidationException("contact <" + cid + 
-						"> must contain either a first or last name.");
-		}
-		if (fn != null && !fn.isEmpty()) {
-			logger.warning("contact <" + cid + ">: fn contains value <" + fn + 
-					">. This will be overwritten (reason: fn is always derived from firstName and lastName).");
-		}
-		if (firstName == null || firstName.isEmpty()) {
-			_fn = lastName;
-		}
-		else if (lastName == null || lastName.isEmpty()) {
-			_fn = firstName;
-		}
-		else {
-			_fn = firstName + " " + lastName;
-		}
-		logger.info("createFullName(" + cid + ", " + fn + ", " + firstName + ", " + lastName + ") -> <" + _fn + ">");
-		return _fn;
 	}
 	
 	@Override
