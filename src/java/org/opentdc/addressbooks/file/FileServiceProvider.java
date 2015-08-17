@@ -56,6 +56,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 	private static Map<String, AddressModel> addressIndex = null;
 	private static final Logger logger = Logger.getLogger(ServiceProvider.class.getName());
 	private static ABaddressbook allAddressbook = null;
+	private static final String ALL_ADDRESSBOOK_NAME = "AAA";
 	
 	public FileServiceProvider(
 			ServletContext context, 
@@ -71,7 +72,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			List<ABaddressbook> _addressbooks = importJson();
 			for (ABaddressbook _addressbook : _addressbooks) {
 				addAbookToIndex(_addressbook);
-				if (_addressbook.getModel().getName().equalsIgnoreCase("all")) {
+				if (_addressbook.getModel().getName().equalsIgnoreCase(ALL_ADDRESSBOOK_NAME)) {
 					allAddressbook = _addressbook;
 				}
 			}
@@ -79,7 +80,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 				// create implicit 'all' addressbook
 				AddressbookModel _am = new AddressbookModel();
 				_am.setId(UUID.randomUUID().toString());
-				_am.setName("all");
+				_am.setName(ALL_ADDRESSBOOK_NAME);
 				Date _date = new Date();
 				_am.setCreatedAt(_date);
 				_am.setCreatedBy("SYSTEM");
@@ -151,8 +152,8 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			throw new ValidationException("addressbook <" + _id + 
 					"> must contain a valid name.");
 		}
-		if (addressbook.getName().equalsIgnoreCase("all")) {
-			throw new ValidationException("[all] is a reserved addressbook name; please choose a different name.");
+		if (addressbook.getName().equalsIgnoreCase(ALL_ADDRESSBOOK_NAME)) {
+			throw new ValidationException("[" + ALL_ADDRESSBOOK_NAME + "] is a reserved addressbook name; please choose a different name.");
 		}
 		addressbook.setId(_id);
 		Date _date = new Date();
@@ -207,8 +208,8 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			throw new ValidationException("new values of addressbook <" + aid + 
 					"> must contain a valid name.");
 		}
-		if (addressbook.getName().equalsIgnoreCase("all")) {
-			throw new ValidationException("[all] is a reserved name for addressbooks; please choose a different name.");
+		if (addressbook.getName().equalsIgnoreCase(ALL_ADDRESSBOOK_NAME)) {
+			throw new ValidationException("[" + ALL_ADDRESSBOOK_NAME + "] is a reserved name for addressbooks; please choose a different name.");
 		}
 		_am.setName(addressbook.getName());
 		_am.setModifiedAt(new Date());
@@ -344,11 +345,15 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			contact.setCreatedBy(getPrincipal());
 			contact.setModifiedAt(_date);
 			contact.setModifiedBy(getPrincipal());
-			
+
 			ABcontact _abContact = new ABcontact();
 			_abContact.setModel(contact);
 			_abContact.addMembership(aid);
 			readAddressbook(aid).addContact(_id);
+			if (!allAddressbook.getModel().getId().equalsIgnoreCase(aid)) {	// custom addressbook
+				_abContact.addMembership(allAddressbook.getModel().getId());
+				allAddressbook.addContact(_id);
+			}
 			addContactToIndex(_abContact);	
 		} 
 		else {
@@ -546,6 +551,10 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			_abOrg.setModel(org);
 			_abOrg.addMembership(aid);
 			readAddressbook(aid).addOrg(_id);
+			if (!allAddressbook.getModel().getId().equalsIgnoreCase(aid)) {	// custom addressbook
+				_abOrg.addMembership(allAddressbook.getModel().getId());	
+				allAddressbook.addOrg(_id);
+			}
 			addOrgToIndex(_abOrg);	
 		} else {
 			ABorg _org = orgIndex.get(_id);
