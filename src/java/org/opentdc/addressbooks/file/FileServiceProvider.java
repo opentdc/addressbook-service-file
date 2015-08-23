@@ -37,8 +37,11 @@ import javax.servlet.ServletContext;
 
 import org.opentdc.addressbooks.AddressModel;
 import org.opentdc.addressbooks.AddressbookModel;
+import org.opentdc.addressbooks.AddressbookQueryHandler;
 import org.opentdc.addressbooks.ContactModel;
+import org.opentdc.addressbooks.ContactQueryHandler;
 import org.opentdc.addressbooks.OrgModel;
+import org.opentdc.addressbooks.OrgQueryHandler;
 import org.opentdc.addressbooks.OrgType;
 import org.opentdc.addressbooks.ServiceProvider;
 import org.opentdc.file.AbstractFileServiceProvider;
@@ -48,6 +51,11 @@ import org.opentdc.service.exception.NotFoundException;
 import org.opentdc.service.exception.ValidationException;
 import org.opentdc.util.PrettyPrinter;
 
+/**
+ * File-based implementation of Addressbook Service.
+ * @author Bruno Kaiser
+ *
+ */
 public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbook> implements ServiceProvider {
 
 	private static Map<String, ABaddressbook> abookIndex = null;
@@ -58,6 +66,12 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 	private static ABaddressbook allAddressbook = null;
 	private static final String ALL_ADDRESSBOOK_NAME = "AAA";
 	
+	/**
+	 * Constructor.
+	 * @param context the servlet context
+	 * @param prefix a simple name for this service implementation
+	 * @throws IOException
+	 */
 	public FileServiceProvider(
 			ServletContext context, 
 			String prefix
@@ -99,22 +113,28 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			+ addressIndex.size() + " Addresses.");
 	}
 	
+	/* (non-Javadoc)
+	 * @see org.opentdc.addressbooks.ServiceProvider#list(java.lang.String, java.lang.String, int, int)
+	 */
 	@Override
 	public List<AddressbookModel> list(
 		String query,
 		String queryType,
 		int position,
-		int size
-	) {
-		ArrayList<AddressbookModel> _addressbooks = new ArrayList<AddressbookModel>();
+		int size) 
+	{		
+		ArrayList<AddressbookModel> _list = new ArrayList<AddressbookModel>();
 		for (ABaddressbook _ab : abookIndex.values()) {
-			_addressbooks.add(_ab.getModel());
+			_list.add(_ab.getModel());
 		}
-		Collections.sort(_addressbooks, AddressbookModel.AddressbookComparator);
+		Collections.sort(_list, AddressbookModel.AddressbookComparator);
+		AddressbookQueryHandler _queryHandler = new AddressbookQueryHandler(query);
 		ArrayList<AddressbookModel> _selection = new ArrayList<AddressbookModel>();
-		for (int i = 0; i < _addressbooks.size(); i++) {
+		for (int i = 0; i < _list.size(); i++) {
 			if (i >= position && i < (position + size)) {
-				_selection.add(_addressbooks.get(i));
+				if (_queryHandler.evaluate(_list.get(i)) == true) {
+					_selection.add(_list.get(i));
+				}
 			}			
 		}
 		logger.info("list(<" + query + ">, <" + queryType + 
@@ -167,6 +187,9 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		return addressbook;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.opentdc.addressbooks.ServiceProvider#read(java.lang.String)
+	 */
 	@Override
 	public AddressbookModel read(
 		String id
@@ -176,6 +199,12 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		return _adbm;
 	}
 	
+	/**
+	 * Read the ABaddressbook representation of an addressbook.
+	 * @param id the addressbook to retrieve it for
+	 * @return return the ABaddressbook representation
+	 * @throws NotFoundException
+	 */
 	private ABaddressbook readAddressbook(
 			String id
 	) throws NotFoundException {
@@ -189,6 +218,9 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		return _adb;
 	}
 	
+	/* (non-Javadoc)
+	 * @see org.opentdc.addressbooks.ServiceProvider#update(java.lang.String, org.opentdc.addressbooks.AddressbookModel)
+	 */
 	@Override
 	public AddressbookModel update(
 		String aid,
@@ -222,6 +254,9 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		return _adb.getModel();
 	}
 
+	/* (non-Javadoc)
+	 * @see org.opentdc.addressbooks.ServiceProvider#delete(java.lang.String)
+	 */
 	@Override
 	public void delete(
 		String id
@@ -241,6 +276,9 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		logger.info("delete(" + id + ")");
 	}
 
+	/* (non-Javadoc)
+	 * @see org.opentdc.addressbooks.ServiceProvider#listAllContacts(java.lang.String, java.lang.String, int, int)
+	 */
 	@Override
 	public ArrayList<ContactModel> listAllContacts(
 			String query, 
@@ -248,16 +286,19 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			int position, 
 			int size
 	) {
-		ArrayList<ContactModel> _contacts = new ArrayList<ContactModel>(); 
+		ArrayList<ContactModel> _list = new ArrayList<ContactModel>(); 
 		for (ABcontact _abContact : contactIndex.values()) {
-			_contacts.add(_abContact.getModel());
+			_list.add(_abContact.getModel());
 		}
 
-		Collections.sort(_contacts, ContactModel.ContactComparator);
+		Collections.sort(_list, ContactModel.ContactComparator);
+		ContactQueryHandler _queryHandler = new ContactQueryHandler(query);
 		ArrayList<ContactModel> _selection = new ArrayList<ContactModel>(); 
-		for (int i = 0; i < _contacts.size(); i++) {
+		for (int i = 0; i < _list.size(); i++) {
 			if (i >= position && i < (position + size)) {
-				_selection.add(_contacts.get(i));
+				if (_queryHandler.evaluate(_list.get(i)) == true) {
+					_selection.add(_list.get(i));
+				}
 			}
 		}
 		logger.info("listAllContacts(<" + query + ">, <" + queryType + 
@@ -266,6 +307,9 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		return _selection;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.opentdc.addressbooks.ServiceProvider#listAllOrgs(java.lang.String, java.lang.String, int, int)
+	 */
 	@Override
 	public ArrayList<OrgModel> listAllOrgs(
 			String query, 
@@ -273,16 +317,19 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			int position, 
 			int size
 	) {
-		ArrayList<OrgModel> _orgs = new ArrayList<OrgModel>(); 
+		ArrayList<OrgModel> _list = new ArrayList<OrgModel>(); 
 		for (ABorg _abOrg : orgIndex.values()) {
-			_orgs.add(_abOrg.getModel());
+			_list.add(_abOrg.getModel());
 		}
 
-		Collections.sort(_orgs, OrgModel.OrgComparator);
+		Collections.sort(_list, OrgModel.OrgComparator);
+		OrgQueryHandler _queryHandler = new OrgQueryHandler(query);
 		ArrayList<OrgModel> _selection = new ArrayList<OrgModel>(); 
-		for (int i = 0; i < _orgs.size(); i++) {
+		for (int i = 0; i < _list.size(); i++) {
 			if (i >= position && i < (position + size)) {
-				_selection.add(_orgs.get(i));
+				if (_queryHandler.evaluate(_list.get(i)) == true) {
+					_selection.add(_list.get(i));
+				}
 			}
 		}
 		logger.info("listAllOrgs(<" + query + ">, <" + queryType + 
@@ -303,15 +350,18 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			int position, 
 			int size) 
 	{
-		ArrayList<ContactModel> _contacts = new ArrayList<ContactModel>(); 
+		ArrayList<ContactModel> _list = new ArrayList<ContactModel>(); 
 		for (String _cid : readAddressbook(aid).getContacts()) {
-			_contacts.add(readABcontact(_cid).getModel());
+			_list.add(readABcontact(_cid).getModel());
 		}
-		Collections.sort(_contacts, ContactModel.ContactComparator);
+		Collections.sort(_list, ContactModel.ContactComparator);
+		ContactQueryHandler _queryHandler = new ContactQueryHandler(query);
 		ArrayList<ContactModel> _selection = new ArrayList<ContactModel>(); 
-		for (int i = 0; i < _contacts.size(); i++) {
+		for (int i = 0; i < _list.size(); i++) {
 			if (i >= position && i < (position + size)) {
-				_selection.add(_contacts.get(i));
+				if (_queryHandler.evaluate(_list.get(i)) == true) {
+					_selection.add(_list.get(i));
+				}
 			}
 		}
 		logger.info("listContacts(<" + aid + ">, <" + query + ">, <" + queryType + 
@@ -393,6 +443,12 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		return getContactModel(cid);
 	}
 	
+	/**
+	 * Retrieve the ContactModel by its ID.
+	 * @param contactId the unique ID of the ContactModel object to retrieve
+	 * @return the ContactModel retrieved
+	 * @throws NotFoundException if no ContactModel object with this ID was found
+	 */
 	public static ContactModel getContactModel(
 			String contactId)
 			throws NotFoundException {
@@ -403,9 +459,10 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 	}
 	
 	/**
-	 * @param id
-	 * @return
-	 * @throws NotFoundException
+	 * Retrieve the ABcontact representation of an addressbook.
+	 * @param id the unique ID of the ContactModel object to retrieve.
+	 * @return the ContactModel object found
+	 * @throws NotFoundException if no ContactModel object with this ID was found
 	 */
 	private static ABcontact readABcontact(
 			String id)
@@ -417,6 +474,9 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		return _c;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.opentdc.addressbooks.ServiceProvider#updateContact(java.lang.String, java.lang.String, org.opentdc.addressbooks.ContactModel)
+	 */
 	@Override
 	public ContactModel updateContact(
 			String aid, 
@@ -505,15 +565,18 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			int position, 
 			int size) 
 	{
-		ArrayList<OrgModel> _orgs = new ArrayList<OrgModel>(); 
+		ArrayList<OrgModel> _list = new ArrayList<OrgModel>(); 
 		for (String _oid : readAddressbook(aid).getOrgs()) {
-			_orgs.add(readABorg(_oid).getModel());
+			_list.add(readABorg(_oid).getModel());
 		}
-		Collections.sort(_orgs, OrgModel.OrgComparator);
+		Collections.sort(_list, OrgModel.OrgComparator);
+		OrgQueryHandler _queryHandler = new OrgQueryHandler(query);
 		ArrayList<OrgModel> _selection = new ArrayList<OrgModel>(); 
-		for (int i = 0; i < _orgs.size(); i++) {
+		for (int i = 0; i < _list.size(); i++) {
 			if (i >= position && i < (position + size)) {
-				_selection.add(_orgs.get(i));
+				if (_queryHandler.evaluate(_list.get(i)) == true) {
+					_selection.add(_list.get(i));
+				}
 			}
 		}
 		logger.info("listOrgs(<" + aid + ">, <" + query + ">, <" + queryType + 
