@@ -34,6 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 import javax.servlet.ServletContext;
+import javax.servlet.http.HttpServletRequest;
 
 import org.opentdc.addressbooks.AddressModel;
 import org.opentdc.addressbooks.AddressbookModel;
@@ -45,6 +46,7 @@ import org.opentdc.addressbooks.OrgQueryHandler;
 import org.opentdc.addressbooks.OrgType;
 import org.opentdc.addressbooks.ServiceProvider;
 import org.opentdc.file.AbstractFileServiceProvider;
+import org.opentdc.service.ServiceUtil;
 import org.opentdc.service.exception.DuplicateException;
 import org.opentdc.service.exception.InternalServerErrorException;
 import org.opentdc.service.exception.NotFoundException;
@@ -145,6 +147,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 	/**
 	 * Creates a new addressbook. Addressbooks are grouping contacts and orgs; they are a subset of all contacts or orgs.
 	 * The addressbook 'all' is implicit. It can not be created nor updated or deleted. Its contacts can be listed with allContacts resp. allOrgs.
+	 * @param request the servlet request
 	 * @param addressbook the new addressbook data
 	 * @return the newly created addressbook; this is the addressbook parameter data plus a newly created id.
 	 * @throws DuplicateException if an addressbook with the same id already exists
@@ -152,6 +155,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 	 */
 	@Override
 	public AddressbookModel create(
+		HttpServletRequest request,
 		AddressbookModel addressbook
 	) throws DuplicateException, ValidationException {
 		logger.info("create(" + PrettyPrinter.prettyPrintAsJSON(addressbook) + ")");
@@ -178,9 +182,9 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		addressbook.setId(_id);
 		Date _date = new Date();
 		addressbook.setCreatedAt(_date);
-		addressbook.setCreatedBy(getPrincipal());
+		addressbook.setCreatedBy(ServiceUtil.getPrincipal(request));
 		addressbook.setModifiedAt(_date);
-		addressbook.setModifiedBy(getPrincipal());
+		addressbook.setModifiedBy(ServiceUtil.getPrincipal(request));
 		abookIndex.put(_id, new ABaddressbook(addressbook));
 		logger.info("create() -> " + PrettyPrinter.prettyPrintAsJSON(addressbook));
 		exportJson(abookIndex.values());
@@ -223,6 +227,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 	 */
 	@Override
 	public AddressbookModel update(
+		HttpServletRequest request,
 		String aid,
 		AddressbookModel addressbook
 	) throws NotFoundException, ValidationException {
@@ -245,7 +250,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		}
 		_am.setName(addressbook.getName());
 		_am.setModifiedAt(new Date());
-		_am.setModifiedBy(getPrincipal());
+		_am.setModifiedBy(ServiceUtil.getPrincipal(request));
 		_adb.setModel(_am);
 
 		logger.info("update(" + aid + ", " + PrettyPrinter.prettyPrintAsJSON(addressbook) + ") -> " +
@@ -375,6 +380,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 	 */
 	@Override
 	public ContactModel createContact(
+		HttpServletRequest request,
 		String aid, 
 		ContactModel contact) 
 				throws DuplicateException, ValidationException 
@@ -392,9 +398,9 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			contact.setFn(_fn);
 			Date _date = new Date();
 			contact.setCreatedAt(_date);
-			contact.setCreatedBy(getPrincipal());
+			contact.setCreatedBy(ServiceUtil.getPrincipal(request));
 			contact.setModifiedAt(_date);
-			contact.setModifiedBy(getPrincipal());
+			contact.setModifiedBy(ServiceUtil.getPrincipal(request));
 
 			ABcontact _abContact = new ABcontact();
 			_abContact.setModel(contact);
@@ -479,6 +485,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 	 */
 	@Override
 	public ContactModel updateContact(
+			HttpServletRequest request,
 			String aid, 
 			String cid,
 			ContactModel contact) 
@@ -516,7 +523,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		_cm.setBirthday(contact.getBirthday());
 		_cm.setNote(contact.getNote());
 		_cm.setModifiedAt(new Date());
-		_cm.setModifiedBy(getPrincipal());
+		_cm.setModifiedBy(ServiceUtil.getPrincipal(request));
 		_c.setModel(_cm);
 		logger.info("updateContact(" + aid + ", " + cid + ", "+ PrettyPrinter.prettyPrintAsJSON(_cm) + ") -> OK");
 		exportJson(abookIndex.values());
@@ -590,6 +597,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 	 */
 	@Override
 	public OrgModel createOrg(
+			HttpServletRequest request,
 			String aid, 
 			OrgModel org)
 					throws DuplicateException, ValidationException 
@@ -606,9 +614,9 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 			}
 			Date _date = new Date();
 			org.setCreatedAt(_date);
-			org.setCreatedBy(getPrincipal());
+			org.setCreatedBy(ServiceUtil.getPrincipal(request));
 			org.setModifiedAt(_date);
-			org.setModifiedBy(getPrincipal());
+			org.setModifiedBy(ServiceUtil.getPrincipal(request));
 			
 			ABorg _abOrg = new ABorg();
 			_abOrg.setModel(org);
@@ -679,6 +687,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 	 */
 	@Override
 	public OrgModel updateOrg(
+			HttpServletRequest request,
 			String aid, 
 			String oid, 
 			OrgModel org)
@@ -709,7 +718,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		_om.setOrgType(org.getOrgType());
 		_om.setLogoUrl(org.getLogoUrl());
 		_om.setModifiedAt(new Date());
-		_om.setModifiedBy(getPrincipal());
+		_om.setModifiedBy(ServiceUtil.getPrincipal(request));
 		_abOrg.setModel(_om);
 		logger.info("updateOrg(" + aid + ", " + oid + ", "+ PrettyPrinter.prettyPrintAsJSON(_om) + ") -> OK");
 		exportJson(abookIndex.values());
@@ -770,13 +779,14 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 
 	@Override
 	public AddressModel createAddress(
+			HttpServletRequest request,
 			String aid, 
 			String cid,
 			AddressModel address) 
 					throws ValidationException, DuplicateException {
 		readAddressbook(aid);		// verify existence of addressbook
 		ABcontact _contact = readABcontact(cid);
-		AddressModel _newAddress = validateNewAddress(address);
+		AddressModel _newAddress = validateNewAddress(request, address);
 		addressIndex.put(_newAddress.getId(), _newAddress);
 		_contact.addAddress(_newAddress);
 		logger.info("createAddress(" + aid + ", " + cid + ", "+ PrettyPrinter.prettyPrintAsJSON(address) + ")");
@@ -785,6 +795,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 	}
 	
 	private AddressModel validateNewAddress(
+			HttpServletRequest request,
 			AddressModel address) 
 				throws ValidationException, DuplicateException {
 		String _id = address.getId();
@@ -846,9 +857,9 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 		address.setId(_id);
 		Date _date = new Date();
 		address.setCreatedAt(_date);
-		address.setCreatedBy(getPrincipal());
+		address.setCreatedBy(ServiceUtil.getPrincipal(request));
 		address.setModifiedAt(_date);
-		address.setModifiedBy(getPrincipal());
+		address.setModifiedBy(ServiceUtil.getPrincipal(request));
 		return address;		
 	}
 	
@@ -876,6 +887,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 
 	@Override
 	public AddressModel updateAddress(
+			HttpServletRequest request,
 			String aid, 
 			String cid, 
 			String adrid,
@@ -883,7 +895,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 				throws NotFoundException, ValidationException {
 		readAddressbook(aid);		// verify existence of addressbook
 		ABcontact _abContact = readABcontact(cid);			// verify existence of contact
-		AddressModel _am = validateChangedAddress("contact", cid, adrid, address);
+		AddressModel _am = validateChangedAddress(request, "contact", cid, adrid, address);
 		addressIndex.put(adrid, _am);
 		_abContact.replaceAddress(_am);
 		logger.info("updateAddress(" + aid + ", " + cid + ", " + adrid + ") -> " +
@@ -893,6 +905,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 	}
 	
 	private AddressModel validateChangedAddress(
+			HttpServletRequest request,
 			String parentType, 
 			String pid, 
 			String adrid, 
@@ -954,7 +967,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 					"> can not be updated, because the new address has an invalid addressType: " + address.getAddressType().toString());
 		}
 		_am.setModifiedAt(new Date());
-		_am.setModifiedBy(getPrincipal());
+		_am.setModifiedBy(ServiceUtil.getPrincipal(request));
 		return _am;
 	}
 
@@ -1006,13 +1019,14 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 
 	@Override
 	public AddressModel createOrgAddress(
+			HttpServletRequest request,
 			String aid, 
 			String oid,
 			AddressModel address) 
 					throws ValidationException, DuplicateException {
 		readAddressbook(aid);		// verify existence of addressbook
 		ABorg _org = readABorg(oid);
-		AddressModel _newAddress = validateNewAddress(address);
+		AddressModel _newAddress = validateNewAddress(request, address);
 		addressIndex.put(_newAddress.getId(), _newAddress);
 		_org.addAddress(_newAddress);
 		logger.info("createAddress(" + aid + ", " + oid + ", "+ PrettyPrinter.prettyPrintAsJSON(address) + ")");
@@ -1036,6 +1050,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 
 	@Override
 	public AddressModel updateOrgAddress(
+			HttpServletRequest request,
 			String aid, 
 			String oid, 
 			String adrid,
@@ -1043,7 +1058,7 @@ public class FileServiceProvider extends AbstractFileServiceProvider<ABaddressbo
 				throws NotFoundException, ValidationException {
 		readAddressbook(aid);		// verify existence of addressbook
 		ABorg _abOrg = readABorg(oid);			// verify existence of org
-		AddressModel _am = validateChangedAddress("org", oid, adrid, address);
+		AddressModel _am = validateChangedAddress(request, "org", oid, adrid, address);
 		addressIndex.put(adrid, _am);
 		_abOrg.replaceAddress(_am);
 		logger.info("updateAddress(" + aid + ", " + oid + ", " + adrid + ") -> " +
